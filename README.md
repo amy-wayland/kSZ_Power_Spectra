@@ -1,9 +1,5 @@
 # kSZ_Power_Spectra
 
-kSZ_Integrals.py : class containing methods to calculate the integrals for the dominant and sub-dominant contributions to the transverse and longitudinal components of the 3D kSZ power spectrum
+kSZ_cNG_transverse.py : python file that calculates the contribution from the connected non-Gaussian term for the transverse mode
 
-kSZ_Calculations.py : python file that calculates the 3D and angular power spectra for the transverse and longitudinal components
-
-kSZ_Satellites.py : python file that investigates the impact of incorporating satellite galaxies in the HOD model
-
-kSZ_cNG_Calculations.py : python file that calculates the contribution from the connected non-Gaussian term
+kSZ_cNG_longitudinal.py : python file that calculates the contribution from the connected non-Gaussian term for the longitudinal mode
