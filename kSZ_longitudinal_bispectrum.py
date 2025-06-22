@@ -223,7 +223,7 @@ def bispectrum_1h(k, kp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_p
 
 #%%
 
-def P_B(k_vec, cosmo, a, a_dot, f, M_vals, nM_vals, bM_vals, interp_pa, interp_pM, rho_mean, n_k=10, n_mu=10, n_phi=16):
+def P_B(k_vec, cosmo, a, a_dot, f, M_vals, nM_vals, bM_vals, interp_pa, interp_pM, bispectrum_func, n_k=10, n_mu=10, n_phi=16):
     
     k_mag = np.linalg.norm(k_vec)
     if k_mag < 1e-5:
@@ -252,7 +252,7 @@ def P_B(k_vec, cosmo, a, a_dot, f, M_vals, nM_vals, bM_vals, interp_pa, interp_p
 
             # Evaluate bispectrum for each phi
             B_vals = np.array([
-                bispectrum_1h(k_vec, kp_vec, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_pM)
+                bispectrum_func(k_vec, kp_vec, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_pM)
                 for kp_vec in kp_vecs])
 
             block_sum = np.sum(k_mag * kp * mu * B_vals * dk[i] * dmu * dphi)
@@ -270,8 +270,7 @@ def P_B(k_vec, cosmo, a, a_dot, f, M_vals, nM_vals, bM_vals, interp_pa, interp_p
 M_vals = np.logspace(11, 15, 128)
 nM_vals = precompute_nM(cosmo, M_vals, a)
 bM_vals = precompute_bM(cosmo, M_vals, a)
-k_vals_3h = np.logspace(-3, -2, 30)
-k_vals_1h = np.logspace(0, 1, 30)
+k_vals = np.logspace(-3, 1, 128)
 
 #%%
 
@@ -296,28 +295,28 @@ def compute_P_B_mmg_1h(k):
 #%%
 
 with concurrent.futures.ProcessPoolExecutor() as executor:
-    P_B_mme_vals_3h = list(executor.map(compute_P_B_mme_3h, k_vals_3h))
+    P_B_mme_vals_3h = list(executor.map(compute_P_B_mme_3h, k_vals))
     
 print("P_3h_vals=", P_B_mme_vals_3h)
 
 #%%
 
 with concurrent.futures.ProcessPoolExecutor() as executor:
-    P_B_mme_vals_1h = list(executor.map(compute_P_B_mme_1h, k_vals_1h))
+    P_B_mme_vals_1h = list(executor.map(compute_P_B_mme_1h, k_vals))
     
 print("P_1h_vals=", P_B_mme_vals_1h)
 
 #%%
 
 with concurrent.futures.ProcessPoolExecutor() as executor:
-    P_B_mmg_vals_3h = list(executor.map(compute_P_B_mmg_3h, k_vals_3h))
+    P_B_mmg_vals_3h = list(executor.map(compute_P_B_mmg_3h, k_vals))
     
-print("P_3h_vals=", P_B_mme_vals_3h)
+print("P_3h_vals=", P_B_mmg_vals_3h)
 
 #%%
 
 with concurrent.futures.ProcessPoolExecutor() as executor:
-    P_B_mmg_vals_1h = list(executor.map(compute_P_B_mmg_1h, k_vals_1h))
+    P_B_mmg_vals_1h = list(executor.map(compute_P_B_mmg_1h, k_vals))
     
 print("P_1h_vals=", P_B_mmg_vals_1h)
 
