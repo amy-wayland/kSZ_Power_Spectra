@@ -120,7 +120,7 @@ def double_integral_t1_par(k, k_prime_vals, P_of_k_1, P_of_k_2, a_index, a):
 
     integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
     
-    return np.trapz(integrand_k_prime, k_prime_vals) / k**2
+    return np.trapz(integrand_k_prime, k_prime_vals)
 
 
 def double_integral_t2_par(k, k_prime_vals, P_of_k_1, P_of_k_2, a_index, a):
@@ -136,7 +136,7 @@ def double_integral_t2_par(k, k_prime_vals, P_of_k_1, P_of_k_2, a_index, a):
         #p = k**2 + k_prime**2 - 2 * k * k_prime * mu
         p = np.maximum(k**2 + k_prime**2 - 2 * k * k_prime * mu, 1e-4)
         q = np.sqrt(p)
-        return (a_dot_val * f_val)**2 * (1/(2 * np.pi)**2) * mu * (k/k_prime - mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
+        return (a_dot_val * f_val)**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 - (k_prime / k) * mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
     
     def int_over_mu(k_prime):
         vals = integrand(mu_vals, k_prime)
@@ -144,7 +144,7 @@ def double_integral_t2_par(k, k_prime_vals, P_of_k_1, P_of_k_2, a_index, a):
 
     integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
     
-    return np.trapz(integrand_k_prime, k_prime_vals) / k**2
+    return np.trapz(integrand_k_prime, k_prime_vals)
 
 
 #%%
