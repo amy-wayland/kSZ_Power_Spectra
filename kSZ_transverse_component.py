@@ -56,7 +56,7 @@ def double_integral_t1(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 1000)
 
     def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
+        q = np.sqrt(k**2 + k_prime**2 + 2 * k * k_prime * mu)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * (1 - mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
 
     def int_over_mu(k_prime):
@@ -76,7 +76,7 @@ def double_integral_t2(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 1000)
     
     def integrand(mu, k_prime):
-        p = k**2 + k_prime**2 - 2 * k * k_prime * mu
+        p = k**2 + k_prime**2 + 2 * k * k_prime * mu
         q = np.sqrt(p)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * k_prime**2 * (1-mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / p
     
@@ -187,11 +187,11 @@ plt.rcParams.update({
     "font.size": 12})
 
 # Test plots of the different contributions
-plt.plot(k_vals, pk_mm(k_vals, 1.0), label=r'm-m', color="tab:blue")
-plt.plot(k_vals, pk_gm(k_vals, 1.0), label=r'g-m', color="tab:red")
-plt.plot(k_vals, pk_em(k_vals, 1.0), label=r'e-m', color="tab:cyan")
-plt.plot(k_vals, pk_eg(k_vals, 1.0), label=r'e-g', color="tab:pink")
-plt.plot(k_vals, pk_ee(k_vals, 1.0), label=r'e-e', color="tab:green")
+plt.plot(k_vals, pk_mm(k_vals, a), label=r'm-m', color="tab:blue")
+plt.plot(k_vals, pk_gm(k_vals, a), label=r'g-m', color="tab:red")
+plt.plot(k_vals, pk_em(k_vals, a), label=r'e-m', color="tab:cyan")
+plt.plot(k_vals, pk_eg(k_vals, a), label=r'e-g', color="tab:pink")
+plt.plot(k_vals, pk_ee(k_vals, a), label=r'e-e', color="tab:green")
 plt.xlim(1e-3, 1e1)
 plt.xlabel(r'$k$', fontsize=20)
 plt.ylabel(r'$P(k)$', fontsize=20)
@@ -214,7 +214,7 @@ P_of_k_term_2 = np.array([double_integral_t2(k, k_prime_vals, pk_em, pk_gm) for 
 P_of_k_term_1_1h = np.array([double_integral_t1(k, k_prime_vals, pk_mm, pk_eg_1h) for k in k_vals])
 
 # Connected non-Gaussian contribution
-P_4h_vals = [np.float64(2170.16363495884), np.float64(2204.4672372778305), np.float64(2195.320290446668), np.float64(2186.980642412834), np.float64(2179.3428931544154), np.float64(2172.069973997958), np.float64(2165.0590526063565), np.float64(2158.378004428503), np.float64(2149.076272129585), np.float64(2138.7398007596853), np.float64(2125.205111523403), np.float64(2110.3170948344655), np.float64(2093.8137114754413), np.float64(2075.427725294425), np.float64(2054.8886843159094), np.float64(2032.1156301724861), np.float64(2006.9617851090381), np.float64(1980.688285945524), np.float64(1953.590734928418), np.float64(1924.4092312013945), np.float64(1893.2618926661157), np.float64(1860.5667263519492), np.float64(1826.5378552595905), np.float64(1791.1779632594212), np.float64(1748.1628446965185), np.float64(1704.2391478822276), np.float64(1661.884231504758), np.float64(1619.0978290226446), np.float64(1575.1685964258907), np.float64(1530.808789318616)]
+#P_4h_vals = 
 
 #%%
 # Plot the results
@@ -226,9 +226,9 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.size": 12})
 
-plt.plot(k_vals, P_of_k_term_1 - P_of_k_term_2, label=r'$P_{q_\perp,1} + P_{q_\perp,2}$', color='tab:red')
+plt.plot(k_vals, P_of_k_term_1 + P_of_k_term_2, label=r'$P_{q_\perp,1} + P_{q_\perp,2}$', color='tab:red')
 plt.plot(k_vals, P_of_k_term_1, label=r'$P_{q_\perp,1}$', color='tab:blue', linestyle='--')
-plt.plot(k_vals, P_of_k_term_2, label=r'$-P_{q_\perp,2}$', color='tab:cyan', linestyle='--')
+plt.plot(k_vals, P_of_k_term_2, label=r'$P_{q_\perp,2}$', color='tab:cyan', linestyle='--')
 plt.plot(k_vals, P_4h_vals)
 plt.xlim(1e-3, 1e-1)
 plt.ylim(1e1, 1e6)
@@ -242,8 +242,8 @@ plt.show()
 
 #%%
 
-plt.plot(k_vals, pk_eg(k_vals, 1.0), label=r'one-halo + two-halo', color="tab:blue")
-plt.plot(k_vals, pk_eg_1h(k_vals, 1.0), label=r'one-halo only', color="tab:red")
+plt.plot(k_vals, pk_eg(k_vals, a), label=r'one-halo + two-halo', color="tab:blue")
+plt.plot(k_vals, pk_eg_1h(k_vals, a), label=r'one-halo only', color="tab:red")
 plt.xlim(1e-3, 1e1)
 plt.xlabel(r'$k$', fontsize=20)
 plt.ylabel(r'$P_{\rm eg}(k)$', fontsize=20)
