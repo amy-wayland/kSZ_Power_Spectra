@@ -53,7 +53,7 @@ def double_integral_t1_par(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 2000)
 
     def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
+        q = np.sqrt(k**2 + k_prime**2 + 2 * k * k_prime * mu)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * mu**2 * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
 
     def int_over_mu(k_prime):
@@ -73,10 +73,9 @@ def double_integral_t2_par(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 2000)
     
     def integrand(mu, k_prime):
-        #p = k**2 + k_prime**2 - 2 * k * k_prime * mu
-        p = np.maximum(k**2 + k_prime**2 - 2 * k * k_prime * mu, 1e-4)
+        p = k**2 + k_prime**2 + 2 * k * k_prime * mu
         q = np.sqrt(p)
-        return (a_dot * f)**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 - (k_prime / k) * mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
+        return -(a_dot * f)**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 + (k_prime / k) * mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
     
     def int_over_mu(k_prime):
         vals = integrand(mu_vals, k_prime)
@@ -235,8 +234,8 @@ P_of_k_term_1_1h = np.array([double_integral_t1(k, k_prime_vals, pk_mm, pk_eg_1h
 #%%
 
 # Contributions from the connected non-Gaussian term
-P_4h_vals_par = [np.float64(14.45642728795), np.float64(22.767442797707243), np.float64(31.666531176779255), np.float64(39.52552906746157), np.float64(46.770012672227686), np.float64(53.461686623460686), np.float64(60.13451205621642), np.float64(66.06334375397579), np.float64(70.74123047943358), np.float64(76.67764476391633), np.float64(82.32430588962895), np.float64(87.99066538654822), np.float64(93.58022062269688), np.float64(99.40052361774954), np.float64(105.379564391522), np.float64(111.65189155044263), np.float64(118.87753351105609), np.float64(128.4413623116191), np.float64(138.40547414147326), np.float64(149.4478314206271), np.float64(162.33281364227366), np.float64(177.71952422494198), np.float64(196.47784160088418), np.float64(218.50389951990206), np.float64(244.70257075795064), np.float64(275.9938567408744), np.float64(311.4923429405752), np.float64(351.0288283767405), np.float64(395.4327258824649), np.float64(445.5366524497683)]
-P_1h_vals_par = [np.float64(6.252171790965269e-11), np.float64(7.090167235522679e-11), np.float64(8.008630496283613e-11), np.float64(8.995315614251391e-11), np.float64(1.0032549399788202e-10), np.float64(1.1122273017633746e-10), np.float64(1.2279324429470357e-10), np.float64(1.3507201205918666e-10), np.float64(1.4804002872799613e-10), np.float64(1.6161907062647286e-10), np.float64(1.7566936531300606e-10), np.float64(1.8998109592161927e-10), np.float64(2.0427147256229123e-10), np.float64(2.181762894016502e-10), np.float64(2.3124488867946125e-10), np.float64(2.4279816936802227e-10), np.float64(2.5171616624425264e-10), np.float64(2.5697925558085607e-10), np.float64(2.591342951525006e-10), np.float64(2.5919064460324953e-10), np.float64(2.577345624543855e-10), np.float64(2.5516310806108495e-10), np.float64(2.5178709356955186e-10), np.float64(2.478449666807619e-10), np.float64(2.435363493768045e-10), np.float64(2.3909075742817447e-10), np.float64(2.347456525346597e-10), np.float64(2.3030733996458552e-10), np.float64(2.2480162832512217e-10), np.float64(2.162004520569935e-10)]
+#P_4h_vals_par = 
+#P_1h_vals_par = 
 
 #%%
 
@@ -263,7 +262,7 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.size": 12})
 
-P_mm = ((a_dot * f)**2) * pk_mm(k_vals, 1/(1+0.55)) / ((2 * np.pi)**3 * k_vals**2)
+P_mm = ((a_dot * f)**2) * pk_mm(k_vals, 1/(1+0.55)) / (2 * np.pi)**3
 
 plt.plot(k_vals, P_of_k_term_1_par, label=r'$P_{q_{\parallel,1}}^{\pi T}$', color='tab:blue')
 plt.plot(k_vals, P_of_k_term_2_par, label=r'$P_{q_{\parallel,2}}^{\pi T}$', color='tab:red')
