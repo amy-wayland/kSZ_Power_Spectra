@@ -262,7 +262,7 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.size": 12})
 
-P_mm = ((a_dot * f)**2) * pk_mm(k_vals, 1/(1+0.55)) / (2 * np.pi)**3
+P_mm = ((a_dot * f)**2) * pk_mm(k_vals, 1/(1+0.55)) / ((2 * np.pi)**3 * k**2)
 
 plt.plot(k_vals, P_of_k_term_1_par, label=r'$P_{q_{\parallel,1}}^{\pi T}$', color='tab:blue')
 plt.plot(k_vals, P_of_k_term_2_par, label=r'$P_{q_{\parallel,2}}^{\pi T}$', color='tab:red')
