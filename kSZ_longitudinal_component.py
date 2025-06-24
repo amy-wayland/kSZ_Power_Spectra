@@ -53,7 +53,7 @@ def double_integral_t1_par(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 2000)
 
     def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 + 2 * k * k_prime * mu)
+        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * mu**2 * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
 
     def int_over_mu(k_prime):
@@ -73,13 +73,13 @@ def double_integral_t2_par(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 2000)
     
     def integrand(mu, k_prime):
-        p = k**2 + k_prime**2 + 2 * k * k_prime * mu
+        p = k**2 + k_prime**2 - 2 * k * k_prime * mu
         q = np.sqrt(p)
-        return -(a_dot * f)**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 + (k_prime / k) * mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
+        return (a_dot * f)**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 - (k_prime / k) * mu) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
     
     def int_over_mu(k_prime):
         vals = integrand(mu_vals, k_prime)
-        return np.trapz(vals, mu_vals)
+        return np.abs(np.trapz(vals, mu_vals))
 
     integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
     
