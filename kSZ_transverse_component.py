@@ -56,7 +56,7 @@ def double_integral_t1(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 1000)
 
     def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 + 2 * k * k_prime * mu)
+        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * (1 - mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
 
     def int_over_mu(k_prime):
@@ -76,7 +76,7 @@ def double_integral_t2(k, k_prime_vals, P_of_k_1, P_of_k_2):
     mu_vals = np.linspace(-0.99, 0.99, 1000)
     
     def integrand(mu, k_prime):
-        p = k**2 + k_prime**2 + 2 * k * k_prime * mu
+        p = k**2 + k_prime**2 - 2 * k * k_prime * mu
         q = np.sqrt(p)
         return (a_dot * f)**2 * (1/(2 * np.pi)**2) * k_prime**2 * (1-mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / p
     
