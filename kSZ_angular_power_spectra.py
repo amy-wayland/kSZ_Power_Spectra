@@ -179,7 +179,7 @@ pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analy
 pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM)
 
 # Halo model integral calculator
-hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=11., nM=32)
+hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
 
 # Electron density
 profile_parameters = {"lMc": 10.0, "beta": 0.6, "eta_b": 0.05, "A_star": 0.0}
