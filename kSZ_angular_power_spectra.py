@@ -237,7 +237,7 @@ for i, a in enumerate(a_arr):
     P1_perp = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
     P_of_k_2d_perp[:, i] = P1_perp
     
-    P1_par = np.array([P_perp_2(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
+    P1_par = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
     P_of_k_2d_par[:, i] = P1_par
     
 #%% 
