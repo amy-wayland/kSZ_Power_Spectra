@@ -187,8 +187,8 @@ profile_density = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, k
 profile_density.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=2000, plaw_fourier=-2.0)
 
 # Normalisation to convert to electron overdensity
-z = 0.55
-a = 1/(1+z)
+z_val = 0.55
+a = 1/(1+z_val)
 rho_crit = ccl.rho_x(cosmo, a, 'critical')
 rho_bar = cosmo["Omega_b"] * rho_crit
 n_M = nM(cosmo, M, a)
