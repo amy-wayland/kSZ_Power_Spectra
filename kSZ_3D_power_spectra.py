@@ -112,7 +112,7 @@ def P_par_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf):
     
     def int_over_mu(k_prime):
         vals = integrand(mu_vals, k_prime)
-        return np.abs(np.trapz(vals, mu_vals))
+        return np.trapz(vals, mu_vals)
 
     integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
     
