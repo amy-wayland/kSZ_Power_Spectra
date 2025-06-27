@@ -249,7 +249,7 @@ P_of_k_perp_T = P_of_k_perp_1 - P_of_k_perp_2
 P_of_k_par_1 = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf) for k in k_vals])
 P_of_k_par_2 = np.array([P_par_2(k, k_prime_vals, pk_em, pk_gm, a, aHf) for k in k_vals])
 P_mm = aHf**2 * pk_mm(k_vals, a) / ((2 * np.pi)**3 * k_vals**2)
-P_of_k_par_T = P_of_k_par_1 - P_of_k_par_2 # + P_mm
+P_of_k_par_T = P_of_k_par_1 + P_of_k_par_2 # + P_mm
 
 #%%
 # Plot 3D power spectra
@@ -270,7 +270,7 @@ plt.show()
 
 plt.plot(k_vals, P_of_k_par_T, label=r'$P_{q_\parallel,1} + P_{q_\parallel,2}$', color='tab:red')
 plt.plot(k_vals, P_of_k_par_1, label=r'$P_{q_\parallel,1}$', color='tab:blue', linestyle='--')
-plt.plot(k_vals, P_of_k_par_2, label=r'$-P_{q_\parallel,2}$', color='tab:cyan', linestyle='--')
+plt.plot(k_vals, P_of_k_par_2, label=r'$P_{q_\parallel,2}$', color='tab:cyan', linestyle='--')
 plt.xlim(1e-3, 1e1)
 plt.xlabel(r'$k$', fontsize=20)
 plt.ylabel(r'$P_{q_\parallel}^{\pi T}(k)$', fontsize=20)
