@@ -183,8 +183,8 @@ hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, 
 
 # Electron density
 profile_parameters = {"lMc": 10.0, "beta": 0.6, "eta_b": 0.05, "A_star": 0.0}
-profile_density = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
-profile_density.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=2000, plaw_fourier=-2.0)
+pe = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
+pe.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=2000, plaw_fourier=-2.0)
 
 # Normalisation to convert to electron overdensity
 z_val = 0.55
@@ -192,14 +192,10 @@ a = 1/(1+z_val)
 rho_crit = ccl.rho_x(cosmo, a, 'critical')
 rho_bar = cosmo["Omega_b"] * rho_crit
 n_M = nM(cosmo, M, a)
-f_bound, f_ejected, f_star = profile_density._get_fractions(cosmo, M)
+f_bound, f_ejected, f_star = pe._get_fractions(cosmo, M)
 integrand = M * n_M * f_star
 rho_star = np.trapz(integrand, log10M) / a**3
 rho_mean = rho_bar - rho_star
-
-# Check normalisation of the electron density profile
-rho_gas_from_prof = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, 1e-4, a, profile_density)
-print(rho_gas_from_prof/rho_mean)
 
 #%%
 # Cross-correlations
@@ -213,46 +209,44 @@ pk_mm = ccl.halos.halomod_Pk2D(cosmo, hmc, pM, lk_arr=np.log(k_vals), a_arr=a_ar
 pk_gm = ccl.halos.halomod_Pk2D(cosmo, hmc, pg, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-matter
-pk_em = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, profile_density, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
+pk_em = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-galaxy
-pk_eg = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, profile_density, prof2=pg, lk_arr=lk_arr, a_arr=a_arr)
+pk_eg = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pg, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-galaxy one-halo term only
-pk_eg_1h = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, profile_density, prof2=pg, lk_arr=lk_arr, a_arr=a_arr, get_2h=False)
+pk_eg_1h = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pg, lk_arr=lk_arr, a_arr=a_arr, get_2h=False)
 
 # Electron-electron
-pk_ee = (1/rho_mean**2) * ccl.halos.halomod_Pk2D(cosmo, hmc, profile_density, prof2=profile_density, lk_arr=lk_arr, a_arr=a_arr)
+pk_ee = (1/rho_mean**2) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pe, lk_arr=lk_arr, a_arr=a_arr)
+
+# Galaxy-galaxy
+pk_gg = ccl.halos.halomod_Pk2D(cosmo, hmc, pg, prof2=pg, lk_arr=lk_arr, a_arr=a_arr)
 
 #%%
 # 3D power spectra calculations 
 
 #%%
 
-P_of_k_2d_par_1 = np.zeros((len(k_vals), len(a_arr)))
-P_of_k_2d_par_2 = np.zeros((len(k_vals), len(a_arr)))
-
-for i, a in enumerate(a_arr):
-    
-    P1_par = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
-    P_of_k_2d_par_1[:, i] = P1_par
-    
-    P2_par = np.array([P_par_2(k, k_prime_vals, pk_em, pk_gm, a, aHf_arr, i) for k in k_vals])
-    P_of_k_2d_par_2[:, i] = P2_par
-    
-#%%
-
 P_of_k_2d_perp_1 = np.zeros((len(k_vals), len(a_arr)))
 P_of_k_2d_perp_2 = np.zeros((len(k_vals), len(a_arr)))
 
 for i, a in enumerate(a_arr):
-    
     P1_perp = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
     P2_perp = np.array([P_perp_2(k, k_prime_vals, pk_em, pk_gm, a, aHf_arr, i) for k in k_vals])
     P_of_k_2d_perp_1[:, i] = P1_perp
     P_of_k_2d_perp_2[:, i] = P2_perp
+
+P_of_k_2d_par_1 = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_par_2 = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    P1_par = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
+    P2_par = np.array([P_par_2(k, k_prime_vals, pk_em, pk_gm, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_par_1[:, i] = P1_par
+    P_of_k_2d_par_2[:, i] = P2_par
     
-#%% 
+#%%
 
 z = (1 / a_arr) - 1
 sorted_indices = np.argsort(a_arr)
@@ -261,21 +255,17 @@ a_arr = a_arr[sorted_indices]
 H_arr = H_arr[sorted_indices]
 f_arr = f_arr[sorted_indices]
 
-#%%
+P_of_k_2d_perp_1 = P_of_k_2d_perp_1[:, sorted_indices]
+P_of_k_2d_perp_2 = P_of_k_2d_perp_2[:, sorted_indices]
+
+pk2d_perp_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_1.T, is_logp=False)
+pk2d_perp_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_2.T, is_logp=False)
 
 P_of_k_2d_par_1 = P_of_k_2d_par_1[:, sorted_indices]
 P_of_k_2d_par_2 = P_of_k_2d_par_2[:, sorted_indices]
 
 pk2d_par_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_1.T, is_logp=False)
 pk2d_par_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_2.T, is_logp=False)
-
-#%%
-
-P_of_k_2d_perp_1 = P_of_k_2d_perp_1[:, sorted_indices]
-P_of_k_2d_perp_2 = P_of_k_2d_perp_2[:, sorted_indices]
-
-pk2d_perp_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_1.T, is_logp=False)
-pk2d_perp_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_2.T, is_logp=False)
 
 #%%
 # Create custom tracers to calculate the angular power spectrum
@@ -298,8 +288,8 @@ pz = pz[sort_idx]
 
 kernel_pi = ccl.get_density_kernel(cosmo, dndz=(z,pz))
 
-chi = ccl.comoving_radial_distance(cosmo, 1/(1+z)) # comoving distance chi(z) in Mpc
-weight_T = 1 / a_arr**2  # dimensionless kernel
+chi = ccl.comoving_radial_distance(cosmo, 1/(1+z))
+weight_T = 1 / a_arr**2
 
 gc_pi = ccl.Tracer()
 gc_T = ccl.Tracer()
@@ -319,17 +309,7 @@ gc_T_par.add_tracer(cosmo, kernel=(chi, weight_T), der_bessel=1, der_angles=0)
 #%%
 
 ells = np.geomspace(1e1, 1e4, 100)
-C_ells_par_1 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_1) / 4
-C_ells_par_2 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_2) / 4
-C_ells_par_T = C_ells_par_1 - C_ells_par_2
 
-D_ells_par_1 = ells * (ells + 1) * C_ells_par_1 / (2 * np.pi)
-D_ells_par_2 = ells * (ells + 1) * C_ells_par_2 / (2 * np.pi)
-D_ells_par_T = D_ells_par_1 - D_ells_par_2
-
-#%%
-
-ells = np.geomspace(1e1, 1e4, 100)
 C_ells_perp_1 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_1) / 2
 C_ells_perp_2 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_2) / 2
 C_ells_perp_T = C_ells_perp_1 - C_ells_perp_2
@@ -337,6 +317,14 @@ C_ells_perp_T = C_ells_perp_1 - C_ells_perp_2
 D_ells_perp_1 = ells * (ells + 1) * C_ells_perp_1 / (2 * np.pi)
 D_ells_perp_2 = ells * (ells + 1) * C_ells_perp_2 / (2 * np.pi)
 D_ells_perp_T = D_ells_perp_1 - D_ells_perp_2
+
+C_ells_par_1 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_1) / 4
+C_ells_par_2 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_2) / 4
+C_ells_par_T = C_ells_par_1 + C_ells_par_2
+
+D_ells_par_1 = ells * (ells + 1) * C_ells_par_1 / (2 * np.pi)
+D_ells_par_2 = ells * (ells + 1) * C_ells_par_2 / (2 * np.pi)
+D_ells_par_T = D_ells_par_1 + D_ells_par_2
 
 #%%
 # Plot angular power spectra
@@ -348,7 +336,7 @@ plt.plot(ells, D_ells_perp_1, color="tab:blue", label=r'$D_{\ell, \perp, 1}$', l
 plt.plot(ells, D_ells_perp_2, color="tab:blue", label=r'$-D_{\ell, \perp, 2}$', linestyle='dotted')
 plt.plot(ells, D_ells_par_T, color="tab:red", label=r'$D_{\ell, \parallel, T}$')
 plt.plot(ells, D_ells_par_1, color="tab:red", label=r'$D_{\ell, \parallel, 1}$', linestyle='--')
-plt.plot(ells, D_ells_par_2, color="tab:red", label=r'$-D_{\ell, \parallel, 2}$', linestyle='dotted')
+plt.plot(ells, D_ells_par_2, color="tab:red", label=r'$D_{\ell, \parallel, 2}$', linestyle='dotted')
 plt.xlim(10, 1e4)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
@@ -359,43 +347,116 @@ plt.legend(fontsize=12, frameon=False, loc="center right")
 plt.show()
 
 #%%
-
-plt.plot(ells, C_ells_perp_T, color="tab:blue", label=r'$C_{\ell, \perp, T}$')
-plt.plot(ells, C_ells_perp_1, color="tab:blue", label=r'$C_{\ell, \perp, 1}$', linestyle='--')
-plt.plot(ells, C_ells_par_T, color="tab:red", label=r'$C_{\ell, \parallel, T}$')
-plt.plot(ells, C_ells_par_1, color="tab:red", label=r'$C_{\ell, \parallel, 1}$', linestyle='--')
-plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=20)
-plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
-plt.tick_params(which='both', direction='in', width=1, length=3)
-plt.legend(fontsize=12, frameon=False, loc="lower left")
-#plt.savefig('kSZ_angular_power_spectra.pdf',  format="pdf", bbox_inches="tight")
-plt.show()
+# Auto-correlations for the covariance matrix
 
 #%%
 
-plt.plot(ells, C_ells_perp_1, color="tab:blue", label=r'$C_{\ell, \perp, 1}$', linestyle='--')
-plt.plot(ells, C_ells_perp_2, color="tab:cyan", label=r'$-C_{\ell, \perp, 2}$', linestyle='--')
-plt.plot(ells, C_ells_perp_T, color="tab:red", label=r'$C_{\ell, \perp, 1} + C_{\ell, \perp, 2}$')
-plt.xlim(10, 1e4)
-#plt.ylim(1e-16, 1e-13)
-plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=20)
-plt.ylabel(r'$C_{\ell, \perp}^{\pi T}$', fontsize=20)
-plt.tick_params(which='both', direction='in', width=1, length=3)
-plt.legend(fontsize=12, frameon=False, loc="lower left")
-#plt.savefig('kSZ_angular_power_spectrum_transverse.pdf',  format="pdf", bbox_inches="tight")
-plt.show()
+# pi-pi auto-correlation
+
+P_of_k_2d_perp_1_gg = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_perp_2_gg = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    P1_perp_gg = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_gg, a, aHf_arr, i) for k in k_vals])
+    P2_perp_gg = np.array([P_perp_2(k, k_prime_vals, pk_gm, pk_gm, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_perp_1_gg[:, i] = P1_perp_gg
+    P_of_k_2d_perp_2_gg[:, i] = P2_perp_gg
+
+P_of_k_2d_par_1_gg = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_par_2_gg = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    P1_par_gg = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_gg, a, aHf_arr, i) for k in k_vals])
+    P2_par_gg = np.array([P_par_2(k, k_prime_vals, pk_gm, pk_gm, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_par_1_gg[:, i] = P1_par_gg
+    P_of_k_2d_par_2_gg[:, i] = P2_par_gg
+    
+#%%
+
+# T-T auto-correlation
+
+P_of_k_2d_perp_1_TT = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_perp_2_TT = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    P1_perp_TT = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_ee, a, aHf_arr, i) for k in k_vals])
+    P2_perp_TT = np.array([P_perp_2(k, k_prime_vals, pk_em, pk_em, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_perp_1_TT[:, i] = P1_perp_TT
+    P_of_k_2d_perp_2_TT[:, i] = P2_perp_TT
+
+P_of_k_2d_par_1_TT = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_par_2_TT = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    P1_par_TT = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_ee, a, aHf_arr, i) for k in k_vals])
+    P2_par_TT = np.array([P_par_2(k, k_prime_vals, pk_em, pk_em, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_par_1_TT[:, i] = P1_par_TT
+    P_of_k_2d_par_2_TT[:, i] = P2_par_TT
+    
+z = (1 / a_arr) - 1
+sorted_indices = np.argsort(a_arr)
+z = z[sorted_indices]
+a_arr = a_arr[sorted_indices]
+H_arr = H_arr[sorted_indices]
+f_arr = f_arr[sorted_indices]
 
 #%%
 
-plt.plot(ells, D_ells_perp_1, color="tab:blue", label=r'$D_{\ell, \perp, 1}$', linestyle='--')
-plt.plot(ells, D_ells_perp_2, color="tab:cyan", label=r'$-D_{\ell, \perp, 2}$', linestyle='--')
-plt.plot(ells, D_ells_perp_T, color="tab:red", label=r'$D_{\ell, \perp, 1} + D_{\ell, \perp, 2}$')
-plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=20)
-plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=20)
-plt.tick_params(which='both', direction='in', width=1, length=3)
-plt.legend(fontsize=12, frameon=False, loc="lower left")
-#plt.savefig('kSZ_angular_power_spectrum_transverse.pdf',  format="pdf", bbox_inches="tight")
-plt.show()
+# Pk2D objects for pi-pi
+
+P_of_k_2d_perp_1_gg = P_of_k_2d_perp_1_gg[:, sorted_indices]
+P_of_k_2d_perp_2_gg = P_of_k_2d_perp_2_gg[:, sorted_indices]
+
+pk2d_perp_1_gg = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_1_gg.T, is_logp=False)
+pk2d_perp_2_gg = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_2_gg.T, is_logp=False)
+
+P_of_k_2d_par_1_gg = P_of_k_2d_par_1_gg[:, sorted_indices]
+P_of_k_2d_par_2_gg = P_of_k_2d_par_2_gg[:, sorted_indices]
+
+pk2d_par_1_gg = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_1_gg.T, is_logp=False)
+pk2d_par_2_gg = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_2_gg.T, is_logp=False)
+
+#%%
+
+# Pk2D objects for T-T
+
+P_of_k_2d_perp_1_TT = P_of_k_2d_perp_1_TT[:, sorted_indices]
+P_of_k_2d_perp_2_TT = P_of_k_2d_perp_2_TT[:, sorted_indices]
+
+pk2d_perp_1_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_1_TT.T, is_logp=False)
+pk2d_perp_2_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_2_TT.T, is_logp=False)
+
+P_of_k_2d_par_1_TT = P_of_k_2d_par_1_TT[:, sorted_indices]
+P_of_k_2d_par_2_TT = P_of_k_2d_par_2_TT[:, sorted_indices]
+
+pk2d_par_1_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_1_TT.T, is_logp=False)
+pk2d_par_2_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_2_TT.T, is_logp=False)
+
+#%%
+
+# Calculate the auto-correlation angular power spectra
+
+ells = np.geomspace(1e1, 1e4, 100)
+
+C_ells_perp_1_gg = ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_pi, ells, p_of_k_a=pk2d_perp_1_gg) / 2
+C_ells_perp_2_gg = ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_pi, ells, p_of_k_a=pk2d_perp_2_gg) / 2
+C_ells_perp_T_gg = C_ells_perp_1_gg - C_ells_perp_2_gg
+
+C_ells_par_1_gg = - ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_pi_par, ells, p_of_k_a=pk2d_par_1_gg) / 4
+C_ells_par_2_gg = - ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_pi_par, ells, p_of_k_a=pk2d_par_2_gg) / 4
+C_ells_par_T_gg = C_ells_par_1_gg - C_ells_par_2_gg
+
+C_ells_perp_1_TT = (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T, gc_T, ells, p_of_k_a=pk2d_perp_1_TT) / 2
+C_ells_perp_2_TT = (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T, gc_T, ells, p_of_k_a=pk2d_perp_2_TT) / 2
+C_ells_perp_T_TT = C_ells_perp_1_TT - C_ells_perp_2_TT
+
+C_ells_par_1_TT = - (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T_par, gc_T_par, ells, p_of_k_a=pk2d_par_1_TT) / 4
+C_ells_par_2_TT = - (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T_par, gc_T_par, ells, p_of_k_a=pk2d_par_2_TT) / 4
+C_ells_par_T_TT = C_ells_par_1_TT - C_ells_par_2_TT
+
+#%%
+
+# Knox formula
+
+f_sky = 0.4
+cov = (C_ells_perp_T_gg * C_ells_perp_T_TT - C_ells_perp_T**2) / (f_sky * (2 * ells + 1))
