@@ -115,7 +115,7 @@ def P_par_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf_arr, a_index):
     
     def int_over_mu(k_prime):
         vals = integrand(mu_vals, k_prime)
-        return np.abs(np.trapz(vals, mu_vals))
+        return np.trapz(vals, mu_vals)
 
     integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
     
@@ -229,16 +229,28 @@ pk_ee = (1/rho_mean**2) * ccl.halos.halomod_Pk2D(cosmo, hmc, profile_density, pr
 
 #%%
 
-P_of_k_2d_perp = np.zeros((len(k_vals), len(a_arr)))
-P_of_k_2d_par = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_par_1 = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_par_2 = np.zeros((len(k_vals), len(a_arr)))
+
+for i, a in enumerate(a_arr):
+    
+    P1_par = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_par_1[:, i] = P1_par
+    
+    P2_par = np.array([P_par_2(k, k_prime_vals, pk_em, pk_gm, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_par_2[:, i] = P2_par
+    
+#%%
+
+P_of_k_2d_perp_1 = np.zeros((len(k_vals), len(a_arr)))
+P_of_k_2d_perp_2 = np.zeros((len(k_vals), len(a_arr)))
 
 for i, a in enumerate(a_arr):
     
     P1_perp = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
-    P_of_k_2d_perp[:, i] = P1_perp
-    
-    P1_par = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf_arr, i) for k in k_vals])
-    P_of_k_2d_par[:, i] = P1_par
+    P2_perp = np.array([P_perp_2(k, k_prime_vals, pk_em, pk_gm, a, aHf_arr, i) for k in k_vals])
+    P_of_k_2d_perp_1[:, i] = P1_perp
+    P_of_k_2d_perp_2[:, i] = P2_perp
     
 #%% 
 
@@ -249,11 +261,21 @@ a_arr = a_arr[sorted_indices]
 H_arr = H_arr[sorted_indices]
 f_arr = f_arr[sorted_indices]
 
-P_of_k_2d = P_of_k_2d_perp[:, sorted_indices]
-P_of_k_2d_par = P_of_k_2d_par[:, sorted_indices]
+#%%
 
-pk2d_perp = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp, is_logp=False)
-pk2d_par = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par, is_logp=False)
+P_of_k_2d_par_1 = P_of_k_2d_par_1[:, sorted_indices]
+P_of_k_2d_par_2 = P_of_k_2d_par_2[:, sorted_indices]
+
+pk2d_par_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_1.T, is_logp=False)
+pk2d_par_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_2.T, is_logp=False)
+
+#%%
+
+P_of_k_2d_perp_1 = P_of_k_2d_perp_1[:, sorted_indices]
+P_of_k_2d_perp_2 = P_of_k_2d_perp_2[:, sorted_indices]
+
+pk2d_perp_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_1.T, is_logp=False)
+pk2d_perp_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_perp_2.T, is_logp=False)
 
 #%%
 # Create custom tracers to calculate the angular power spectrum
@@ -266,7 +288,7 @@ cm_per_Mpc = 3.0857e24 # cm / Mpc
 sigma_T = (sigma_T_cgs / cm_per_Mpc**2) * cosmo['h']**2 # (Mpc/h)**2
 n_e0 = (n_e0_cgs * cm_per_Mpc**3) / cosmo['h']**3 # 1/(Mpc/h)**3
 
-pz = (1 / np.sqrt(2 * np.pi * 0.3**2)) * np.exp(- 0.5 * ((z - 0.55) / 0.3)**2)
+pz = (1 / np.sqrt(2 * np.pi * 0.05**2)) * np.exp(- 0.5 * ((z - 0.55) / 0.05)**2)
 Hz = ccl.h_over_h0(cosmo, 1/(1+z)) * cosmo['h'] * 100
 nz = Hz * pz
 
@@ -277,8 +299,7 @@ pz = pz[sort_idx]
 kernel_pi = ccl.get_density_kernel(cosmo, dndz=(z,pz))
 
 chi = ccl.comoving_radial_distance(cosmo, 1/(1+z)) # comoving distance chi(z) in Mpc
-dchi_dz = ccl.physical_constants.CLIGHT_HMPC*cosmo['h']/ccl.h_over_h0(cosmo, 1/(1+z))
-weight_T = dchi_dz / a_arr**2  # dimensionless kernel
+weight_T = 1 / a_arr**2  # dimensionless kernel
 
 gc_pi = ccl.Tracer()
 gc_T = ccl.Tracer()
@@ -298,23 +319,83 @@ gc_T_par.add_tracer(cosmo, kernel=(chi, weight_T), der_bessel=1, der_angles=0)
 #%%
 
 ells = np.geomspace(1e1, 1e4, 100)
-C_ells_perp = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp) / 2
-C_ells_par = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par) / 4
+C_ells_par_1 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_1) / 4
+C_ells_par_2 = -sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi_par, gc_T_par, ells, p_of_k_a=pk2d_par_2) / 4
+C_ells_par_T = C_ells_par_1 - C_ells_par_2
 
-D_ells_perp = ells * (ells + 1) * C_ells_perp / (2 * np.pi)
-D_ells_par = ells * (ells + 1) * C_ells_par / (2 * np.pi)
+D_ells_par_1 = ells * (ells + 1) * C_ells_par_1 / (2 * np.pi)
+D_ells_par_2 = ells * (ells + 1) * C_ells_par_2 / (2 * np.pi)
+D_ells_par_T = D_ells_par_1 - D_ells_par_2
+
+#%%
+
+ells = np.geomspace(1e1, 1e4, 100)
+C_ells_perp_1 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_1) / 2
+C_ells_perp_2 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_2) / 2
+C_ells_perp_T = C_ells_perp_1 - C_ells_perp_2
+
+D_ells_perp_1 = ells * (ells + 1) * C_ells_perp_1 / (2 * np.pi)
+D_ells_perp_2 = ells * (ells + 1) * C_ells_perp_2 / (2 * np.pi)
+D_ells_perp_T = D_ells_perp_1 - D_ells_perp_2
 
 #%%
 # Plot angular power spectra
 
 #%%
 
-plt.plot(ells, D_ells_perp, color="tab:blue", label=r'$D_{\ell, \perp}$')
-plt.plot(ells, D_ells_par, color="tab:red", label=r'$D_{\ell, \parallel}$')
+plt.plot(ells, D_ells_perp_T, color="tab:blue", label=r'$D_{\ell, \perp, T}$')
+plt.plot(ells, D_ells_perp_1, color="tab:blue", label=r'$D_{\ell, \perp, 1}$', linestyle='--')
+plt.plot(ells, D_ells_perp_2, color="tab:blue", label=r'$-D_{\ell, \perp, 2}$', linestyle='dotted')
+plt.plot(ells, D_ells_par_T, color="tab:red", label=r'$D_{\ell, \parallel, T}$')
+plt.plot(ells, D_ells_par_1, color="tab:red", label=r'$D_{\ell, \parallel, 1}$', linestyle='--')
+plt.plot(ells, D_ells_par_2, color="tab:red", label=r'$-D_{\ell, \parallel, 2}$', linestyle='dotted')
+plt.xlim(10, 1e4)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
 plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=20)
 plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="center right")
+#plt.savefig('kSZ_angular_power_spectra.pdf',  format="pdf", bbox_inches="tight")
+plt.show()
+
+#%%
+
+plt.plot(ells, C_ells_perp_T, color="tab:blue", label=r'$C_{\ell, \perp, T}$')
+plt.plot(ells, C_ells_perp_1, color="tab:blue", label=r'$C_{\ell, \perp, 1}$', linestyle='--')
+plt.plot(ells, C_ells_par_T, color="tab:red", label=r'$C_{\ell, \parallel, T}$')
+plt.plot(ells, C_ells_par_1, color="tab:red", label=r'$C_{\ell, \parallel, 1}$', linestyle='--')
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
 plt.legend(fontsize=12, frameon=False, loc="lower left")
 #plt.savefig('kSZ_angular_power_spectra.pdf',  format="pdf", bbox_inches="tight")
+plt.show()
+
+#%%
+
+plt.plot(ells, C_ells_perp_1, color="tab:blue", label=r'$C_{\ell, \perp, 1}$', linestyle='--')
+plt.plot(ells, C_ells_perp_2, color="tab:cyan", label=r'$-C_{\ell, \perp, 2}$', linestyle='--')
+plt.plot(ells, C_ells_perp_T, color="tab:red", label=r'$C_{\ell, \perp, 1} + C_{\ell, \perp, 2}$')
+plt.xlim(10, 1e4)
+#plt.ylim(1e-16, 1e-13)
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$C_{\ell, \perp}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="lower left")
+#plt.savefig('kSZ_angular_power_spectrum_transverse.pdf',  format="pdf", bbox_inches="tight")
+plt.show()
+
+#%%
+
+plt.plot(ells, D_ells_perp_1, color="tab:blue", label=r'$D_{\ell, \perp, 1}$', linestyle='--')
+plt.plot(ells, D_ells_perp_2, color="tab:cyan", label=r'$-D_{\ell, \perp, 2}$', linestyle='--')
+plt.plot(ells, D_ells_perp_T, color="tab:red", label=r'$D_{\ell, \perp, 1} + D_{\ell, \perp, 2}$')
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="lower left")
+#plt.savefig('kSZ_angular_power_spectrum_transverse.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
