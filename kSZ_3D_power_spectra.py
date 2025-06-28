@@ -174,7 +174,7 @@ bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200m)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analytic=True)
 
 # Galaxy overdensity
-pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM)
+pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
 
 # Halo model integral calculator
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
