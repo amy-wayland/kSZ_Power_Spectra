@@ -306,14 +306,12 @@ def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_p
         for j, kpp in enumerate(kpp_primes):
             for mu1 in mu_primes:
                 sin_theta1 = np.sqrt(1 - mu1**2)
-                sin_theta1_sq = sin_theta1**2
 
                 # Fixed k' vector in the x-z plane (due to azimuthal symmetry)
                 kp_vec = kp * np.array([sin_theta1, 0.0, mu1])
 
                 for mu2 in mupp_primes:
                     sin_theta2 = np.sqrt(1 - mu2**2)
-                    sin_theta2_sq = sin_theta2**2
 
                     # Vectorised k'' vectors over phi
                     kpp_vecs = kpp * np.stack([sin_theta2 * cos_phis, sin_theta2 * sin_phis, mu2 * np.ones_like(phis)], axis=1)
@@ -322,7 +320,7 @@ def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_p
                     T_vals = np.array([trispectrum_func(k_vec, kp_vec, kpp_vec, cosmo, a,M_vals, nM_vals, bM_vals,interp_pg, interp_pe, interp_pM, P_L_interp) for kpp_vec in kpp_vecs])
                     
                     # Approximate the 5D integral as a weighted 5D sum of the integrand times the volume elements
-                    block_sum = np.sum(kp * kpp * sin_theta1_sq * sin_theta2_sq * cos_phis * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
+                    block_sum = np.sum(kp * kpp * sin_theta1 * sin_theta2 * cos_phis * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
                     result += block_sum
 
     final_result = prefactor * result
@@ -369,7 +367,7 @@ def P_T_par(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_pe
                     # Evaluate trispectrum for each phi
                     T_vals = np.array([trispectrum_func(k_vec, kp_vec, kpp_vec, cosmo, a, M_vals, nM_vals, bM_vals,interp_pg, interp_pe, interp_pM, P_L_interp) for kpp_vec in kpp_vecs])
 
-                    block_sum = np.sum(kp * kpp * mu1 * mu2 * sin_theta1 * sin_theta2 * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
+                    block_sum = np.sum(kp * kpp * mu1 * mu2 * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
                     result += block_sum
 
     final_result = prefactor * result / k_mag**2
