@@ -176,7 +176,7 @@ bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200m)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analytic=True)
 
 # Galaxy overdensity
-pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM)
+pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
 
 # Halo model integral calculator
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
@@ -308,7 +308,7 @@ gc_T_par.add_tracer(cosmo, kernel=(chi, weight_T), der_bessel=1, der_angles=0)
 
 #%%
 
-ells = np.geomspace(1e1, 1e4, 100)
+ells = np.geomspace(40, 7979, 7940)
 
 C_ells_perp_1 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_1) / 2
 C_ells_perp_2 = sigma_T * n_e0 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_T, ells, p_of_k_a=pk2d_perp_2) / 2
@@ -337,17 +337,17 @@ plt.plot(ells, D_ells_perp_2, color="tab:blue", label=r'$-D_{\ell, \perp, 2}$', 
 plt.plot(ells, D_ells_par_T, color="tab:red", label=r'$D_{\ell, \parallel, T}$')
 plt.plot(ells, D_ells_par_1, color="tab:red", label=r'$D_{\ell, \parallel, 1}$', linestyle='--')
 plt.plot(ells, D_ells_par_2, color="tab:red", label=r'$D_{\ell, \parallel, 2}$', linestyle='dotted')
-plt.xlim(10, 1e4)
+plt.xlim(40, 8e3)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
 plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=20)
 plt.tick_params(which='both', direction='in', width=1, length=3)
-plt.legend(fontsize=12, frameon=False, loc="center right")
+plt.legend(fontsize=12, frameon=False, loc="center right", ncol=2)
 #plt.savefig('kSZ_angular_power_spectra.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
-# Auto-correlations for the covariance matrix
+# Covariance matrix calculation
 
 #%%
 
@@ -434,9 +434,49 @@ pk2d_par_2_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_pa
 
 #%%
 
+# CMB power spectrum
+
+cmb_data = np.loadtxt('data/camb_93159309_scalcls.dat', usecols=(0,1))
+ell_vals_full = cmb_data[:,0]
+ell_vals_cmb = ell_vals_full[38:7978]
+D_ells_full = cmb_data[:,1]
+D_ells_cmb = D_ells_full[38:7978]
+C_ells_cmb = np.array([2 * np.pi * D_ells_cmb[i] * 1/(ell_vals_cmb[i] * (ell_vals_cmb[i]+1)) for i in range(len(ell_vals_cmb))])
+
+
+# Noise power spectrum for C_l^{TT}
+
+d = np.loadtxt("data/SO_LAT_Nell_T_atmv1_baseline_fsky0p4_ILC_CMB.txt", unpack=True)
+l_base = d[0]
+nl_base = d[1]
+
+l_s4 = l_base
+
+# Atmospheric noise
+lknee = 2154
+aknee = -3.5
+
+# Noise rms: 2 uK-arcmin
+DT = 2.0
+
+# Beam FWHM
+fwhm = 1.4
+beam = np.exp(-0.5*l_s4*(l_s4+1)*(np.radians(fwhm/60)/2.355)**2)
+
+# White amplitude in uK^2 srad
+Nwhite = DT**2*(np.pi/180/60)**2
+
+# S4-only noise
+nl_s4 = Nwhite * (1 + (l_s4/lknee)**aknee)/beam**2
+
+# Combine with Planck on large scales
+nl_s4 = 1/(1/nl_s4+1/nl_base)
+
+#%%
+
 # Calculate the auto-correlation angular power spectra
 
-ells = np.geomspace(1e1, 1e4, 100)
+ells = np.geomspace(40, 7979, 7940)
 
 C_ells_perp_1_gg = ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_pi, ells, p_of_k_a=pk2d_perp_1_gg) / 2
 C_ells_perp_2_gg = ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_pi, gc_pi, ells, p_of_k_a=pk2d_perp_2_gg) / 2
@@ -448,15 +488,28 @@ C_ells_par_T_gg = C_ells_par_1_gg - C_ells_par_2_gg
 
 C_ells_perp_1_TT = (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T, gc_T, ells, p_of_k_a=pk2d_perp_1_TT) / 2
 C_ells_perp_2_TT = (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T, gc_T, ells, p_of_k_a=pk2d_perp_2_TT) / 2
-C_ells_perp_T_TT = C_ells_perp_1_TT - C_ells_perp_2_TT
+C_ells_perp_T_TT = C_ells_perp_1_TT - C_ells_perp_2_TT + C_ells_cmb + nl_s4
 
 C_ells_par_1_TT = - (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T_par, gc_T_par, ells, p_of_k_a=pk2d_par_1_TT) / 4
 C_ells_par_2_TT = - (n_e0 * sigma_T)**2 * ((ells * (ells+1)) / (ells+1/2)**2) * ccl.angular_cl(cosmo, gc_T_par, gc_T_par, ells, p_of_k_a=pk2d_par_2_TT) / 4
-C_ells_par_T_TT = C_ells_par_1_TT - C_ells_par_2_TT
+C_ells_par_T_TT = C_ells_par_1_TT - C_ells_par_2_TT + C_ells_cmb + nl_s4
 
 #%%
 
 # Knox formula
 
 f_sky = 0.4
-cov = (C_ells_perp_T_gg * C_ells_perp_T_TT - C_ells_perp_T**2) / (f_sky * (2 * ells + 1))
+d_ell = (7979 - 40) / 7940
+
+cov = (C_ells_perp_T_gg * C_ells_perp_T_TT + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell)
+
+#%%
+
+plt.errorbar(ells, C_ells_perp_T, yerr=cov)
+plt.xlim(40, 8e3)
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="center right", ncol=2)
+plt.show()
