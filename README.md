@@ -1,5 +1,7 @@
 # kSZ_Power_Spectra
 
+data : folder containing SO noise baseline and the CMB power spectrum from CAMB
+
 HaloProfiles.py : class containing code to calculate the electron density profile based on La Posta+ 2024
 
 kSZ_3D_power_spectra.py : calculates the 3D power spectra for the transverse and longitudinal modes
