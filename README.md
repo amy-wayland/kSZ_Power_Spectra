@@ -1,6 +1,6 @@
 # kSZ_Power_Spectra
 
-data : folder containing SO noise baseline and the CMB power spectrum from CAMB
+data : folder containing Simons Observatory noise baseline and the CMB power spectrum from CAMB
 
 HaloProfiles.py : class containing code to calculate the electron density profile based on La Posta+ 2024
 
