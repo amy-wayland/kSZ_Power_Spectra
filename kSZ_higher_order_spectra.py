@@ -166,10 +166,9 @@ def trispectrum_1h(k, kp, kpp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pg, in
     u3 = interp_pM.ev(np.log10(k_norms[2]), log10M)
     u4 = interp_pM.ev(np.log10(k_norms[3]), log10M)
 
-    dlog10M = np.log(10) * M_vals
-    integrand = dlog10M * nM_vals * bM_vals * u1 * u2 * u3 * u4
+    integrand = nM_vals * bM_vals * u1 * u2 * u3 * u4
     integral = np.trapz(integrand, log10M)
-    result = integral / rho_mean
+    result = integral
     #print(f"trispectrum_1h = {result:.3e}")
     return result
     
@@ -187,7 +186,6 @@ def trispectrum_4h(k, kp, kpp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pg, in
     
     k_norms = [max(np.linalg.norm(ki), 1e-4) for ki in ks]
     log10M = np.log10(M_vals)
-    dlog10M = np.log(10) * M_vals  # dM = ln(10) * M * dlog10M
 
     # Evaluate each profile over (k, M) grid
     u1_vals = interp_pg.ev(np.log10(k_norms[0]), log10M)
@@ -196,10 +194,10 @@ def trispectrum_4h(k, kp, kpp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pg, in
     u4_vals = interp_pM.ev(np.log10(k_norms[3]), log10M)
 
     # Compute separate integrals for each u_i
-    integrand1 = dlog10M * nM_vals * bM_vals * u1_vals
-    integrand2 = dlog10M * nM_vals * bM_vals * u2_vals
-    integrand3 = dlog10M * nM_vals * bM_vals * u3_vals
-    integrand4 = dlog10M * nM_vals * bM_vals * u4_vals
+    integrand1 = nM_vals * bM_vals * u1_vals
+    integrand2 = nM_vals * bM_vals * u2_vals
+    integrand3 = nM_vals * bM_vals * u3_vals
+    integrand4 = nM_vals * bM_vals * u4_vals
 
     I1 = np.trapz(integrand1, log10M)
     I2 = np.trapz(integrand2, log10M)
@@ -207,7 +205,7 @@ def trispectrum_4h(k, kp, kpp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pg, in
     I4 = np.trapz(integrand4, log10M)
 
     T_tree = T_tree_level(k, kp, kpp, P_L_interp)
-    result = T_tree * I1 * I2 * I3 * I4 / rho_mean**4
+    result = T_tree * I1 * I2 * I3 * I4
     #print(f"trispectrum_4h = {result:.3e}")
     return result
 
@@ -224,16 +222,15 @@ def bispectrum_1h(k, kp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_p
     
     k_norms = [max(np.linalg.norm(ki), 1e-4) for ki in ks]
     log10M = np.log10(M_vals)
-    dlog10M = np.log(10) * M_vals  # dM = ln(10) * M * dlog10M
 
     # Evaluate each profile over (k, M) grid
     u1_vals = interp_pM.ev(np.log10(k_norms[0]), log10M)
     u2_vals = interp_pM.ev(np.log10(k_norms[1]), log10M)
     u3_vals = interp_pa.ev(np.log10(k_norms[2]), log10M)
 
-    integrand = dlog10M * nM_vals * bM_vals * u1_vals * u2_vals * u3_vals
+    integrand = nM_vals * bM_vals * u1_vals * u2_vals * u3_vals
     integral = np.trapz(integrand, log10M)
-    result = integral / rho_mean
+    result = integral
     #print(f"bispectrum_1h = {result:.3e}")
     return result
 
@@ -251,7 +248,6 @@ def bispectrum_3h(k, kp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_p
     
     k_norms = [max(np.linalg.norm(ki), 1e-4) for ki in ks]
     log10M = np.log10(M_vals)
-    dlog10M = np.log(10) * M_vals  # dM = ln(10) * M * dlog10M
 
     # Evaluate each profile over (k, M) grid
     u1_vals = interp_pM.ev(np.log10(k_norms[0]), log10M)
@@ -259,16 +255,16 @@ def bispectrum_3h(k, kp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_p
     u3_vals = interp_pa.ev(np.log10(k_norms[2]), log10M)
 
     # Compute separate integrals for each u_i
-    integrand1 = dlog10M * nM_vals * bM_vals * u1_vals
-    integrand2 = dlog10M * nM_vals * bM_vals * u2_vals
-    integrand3 = dlog10M * nM_vals * bM_vals * u3_vals
+    integrand1 = nM_vals * bM_vals * u1_vals
+    integrand2 = nM_vals * bM_vals * u2_vals
+    integrand3 = nM_vals * bM_vals * u3_vals
 
     I1 = np.trapz(integrand1, log10M)
     I2 = np.trapz(integrand2, log10M)
     I3 = np.trapz(integrand3, log10M)
 
     B_tree = B_tree_level(k1, k2, k3, P_L_interp)
-    result = B_tree * I1 * I2 * I3 / rho_mean**3
+    result = B_tree * I1 * I2 * I3
     #print(f"bispectrum_3h = {result:.3e}")
     return result
 
@@ -468,26 +464,32 @@ bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200m)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analytic=True)
 
 # Galaxy overdensity
-pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
+pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
 
 # Halo model integral calculator
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
 
-# Electron density
-profile_parameters = {"lMc": 10.0, "beta": 0.6, "eta_b": 0.05, "A_star": 0.0}
-pe = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
-pe.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=2000, plaw_fourier=-2.0)
+# Gas density profile
+profile_parameters = {"lMc": 14.0, "beta": 0.6, "eta_b": 0.5, "A_star": 0.03}
+pGas = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
+pGas.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=300, plaw_fourier=-2.0)
 
-# Normalisation to convert to electron overdensity
-z = 0.55
-a = 1/(1+z)
-rho_crit = ccl.rho_x(cosmo, a, 'critical')
-rho_bar = cosmo["Omega_b"] * rho_crit
-n_M = nM(cosmo, M, a)
-f_bound, f_ejected, f_star = pe._get_fractions(cosmo, M)
-integrand = M * n_M * f_star
-rho_star = np.trapz(integrand, log10M) / a**3
-rho_mean = rho_bar - rho_star
+# Function to normalise into an overdensity
+def p_gas_normalisation(pgas, a):
+    '''
+    Calculates the physical gas density at scale factor a for a given gas profile p_gas
+    
+    '''
+    def rho_gas_integrand(M):
+        fb, fe, fs = pgas._get_fractions(cosmo, M)
+        return (fb + fe) * M * pgas.prefac_rho
+    
+    return hmc.integrate_over_massfunc(rho_gas_integrand, cosmo, a) / a**3
+
+# Normalisation factor
+z_val = 0.55
+a = 1/(1+z_val)
+gas_norm = p_gas_normalisation(pGas, a)
 
 # Precompute halo properties
 nM_vals = precompute_nM(cosmo, M, a)
@@ -501,7 +503,7 @@ bM_vals = precompute_bM(cosmo, M, a)
 # Define grids for M and k
 log10M_grid = np.linspace(11, 15, 128)
 M_grid = 10**log10M_grid
-k_grid = np.logspace(-3, 2, 256)
+k_grid = np.logspace(-3, 2, 128)
 log10k_grid = np.log10(k_grid)
 
 # Arrays for Fourier transforms
@@ -512,8 +514,8 @@ u_pM_grid = np.zeros((len(k_grid), len(M_grid)))
 # Fill the grids
 for i, k_val in enumerate(k_grid):
     for j, M_val in enumerate(M_grid):
-        u_pg_grid[i, j] = pg.fourier(cosmo, k_val, M_val, a) / M_val
-        u_pe_grid[i, j] = pe.fourier(cosmo, k_val, M_val, a) / rho_mean
+        u_pg_grid[i, j] = pG.fourier(cosmo, k_val, M_val, a) / M_val
+        u_pe_grid[i, j] = pGas.fourier(cosmo, k_val, M_val, a) / gas_norm
         u_pM_grid[i, j] = pM.fourier(cosmo, k_val, M_val, a) / M_val
 
 interp_pg = RectBivariateSpline(log10k_grid, log10M_grid, u_pg_grid)
@@ -564,14 +566,47 @@ def compute_P_B_mmg_3h(k):
 
 test_k = 1e-2
 
-P_test_T_4h_perp = compute_P_T_4h_perp(test_k)
-print(f"P_T_4h_perp(k={test_k:.3e}) = {P_test_T_4h_perp:.3e}")
+P_test_T_1h_par = compute_P_T_1h_par(test_k)
+print(f"P_T_1h_par(k={test_k:.3e}) = {P_test_T_1h_par:.3e}")
 
 P_test_T_4h_par = compute_P_T_4h_par(test_k)
 print(f"P_T_4h_par(k={test_k:.3e}) = {P_test_T_4h_par:.3e}")
 
+P_test_B_mme_1h = compute_P_B_mme_1h(test_k)
+print(f"P_B_mme_1h(k={test_k:.2e}) = {P_test_B_mme_1h:.3e}")
+
 P_test_B_mme_3h = compute_P_B_mme_3h(test_k)
 print(f"P_B_mme_3h(k={test_k:.2e}) = {P_test_B_mme_3h:.3e}")
+
+P_test_B_mmg_1h = compute_P_B_mmg_1h(test_k)
+print(f"P_B_mmg_1h(k={test_k:.2e}) = {P_test_B_mmg_1h:.3e}")
+
+P_test_B_mmg_3h = compute_P_B_mmg_3h(test_k)
+print(f"P_B_mmg_3h(k={test_k:.2e}) = {P_test_B_mmg_3h:.3e}")
+
+P_test_T_4h_perp = compute_P_T_4h_perp(test_k)
+print(f"P_T_4h_perp(k={test_k:.3e}) = {P_test_T_4h_perp:.3e}")
+
+#%%
+import pyccl as ccl
+
+# Get critical density at z = 0 in Msun/Mpc^3
+rho_crit_0 = 2.775e11 * cosmo['h']**2  # Msun / Mpc^3
+
+# Get Omega_m at scale factor a
+Omega_m_a = ccl.omega_x(cosmo, a, 'matter')
+
+# Compute comoving matter density
+rho_m = Omega_m_a * rho_crit_0
+
+log10M = np.log10(M)
+dlog10M = np.log(10) * M
+rho_mass_integral = np.trapz(nM_vals * M * dlog10M, log10M)
+
+print(f"rho_m (from CCL): {rho_m:.3e} Msun/Mpc^3")
+print(f"rho_m (from n(M) integral): {rho_mass_integral:.3e} Msun/Mpc^3")
+print(f"Ratio: {rho_mass_integral / rho_m:.4f}")
+
 
 #%%
 # Run over full k range
