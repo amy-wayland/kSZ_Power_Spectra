@@ -21,7 +21,7 @@ def P_perp_1(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf_arr, a_index):
 
     '''
     aHf = aHf_arr[a_index]
-    mu_vals = np.linspace(-0.99, 0.99, 256)
+    mu_vals = np.linspace(-0.99, 0.99, 128)
 
     def integrand(mu, k_prime):
         q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
@@ -49,7 +49,7 @@ def P_perp_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf_arr, a_index):
 
     '''
     aHf = aHf_arr[a_index]
-    mu_vals = np.linspace(-0.99, 0.99, 256)
+    mu_vals = np.linspace(-0.99, 0.99, 128)
     
     def integrand(mu, k_prime):
         p = k**2 + k_prime**2 - 2 * k * k_prime * mu
@@ -78,7 +78,7 @@ def P_par_1(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf_arr, a_index):
 
     '''
     aHf = aHf_arr[a_index]
-    mu_vals = np.linspace(-0.99, 0.99, 256)
+    mu_vals = np.linspace(-0.99, 0.99, 128)
 
     def integrand(mu, k_prime):
         q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
@@ -106,7 +106,7 @@ def P_par_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf_arr, a_index):
 
     '''
     aHf = aHf_arr[a_index]
-    mu_vals = np.linspace(-0.99, 0.99, 256)
+    mu_vals = np.linspace(-0.99, 0.99, 128)
     
     def integrand(mu, k_prime):
         p = k**2 + k_prime**2 - 2 * k * k_prime * mu
@@ -176,26 +176,32 @@ bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200m)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analytic=True)
 
 # Galaxy overdensity
-pg = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
+pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
 
 # Halo model integral calculator
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
 
-# Electron density
-profile_parameters = {"lMc": 10.0, "beta": 0.6, "eta_b": 0.05, "A_star": 0.0}
-pe = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
-pe.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=2000, plaw_fourier=-2.0)
+# Gas density profile
+profile_parameters = {"lMc": 14.0, "beta": 0.6, "eta_b": 0.5, "A_star": 0.03}
+pGas = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
+pGas.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=300, plaw_fourier=-2.0)
 
-# Normalisation to convert to electron overdensity
+# Function to normalise into an overdensity
+def p_gas_normalisation(pgas, a):
+    '''
+    Calculates the physical gas density at scale factor a for a given gas profile p_gas
+    
+    '''
+    def rho_gas_integrand(M):
+        fb, fe, fs = pgas._get_fractions(cosmo, M)
+        return (fb + fe) * M * pgas.prefac_rho
+    
+    return hmc.integrate_over_massfunc(rho_gas_integrand, cosmo, a) / a**3
+
+# Normalisation factor
 z_val = 0.55
 a = 1/(1+z_val)
-rho_crit = ccl.rho_x(cosmo, a, 'critical')
-rho_bar = cosmo["Omega_b"] * rho_crit
-n_M = nM(cosmo, M, a)
-f_bound, f_ejected, f_star = pe._get_fractions(cosmo, M)
-integrand = M * n_M * f_star
-rho_star = np.trapz(integrand, log10M) / a**3
-rho_mean = rho_bar - rho_star
+gas_norm = p_gas_normalisation(pGas, a)
 
 #%%
 # Cross-correlations
@@ -206,22 +212,22 @@ rho_mean = rho_bar - rho_star
 pk_mm = ccl.halos.halomod_Pk2D(cosmo, hmc, pM, lk_arr=np.log(k_vals), a_arr=a_arr)
 
 # Galaxy-matter
-pk_gm = ccl.halos.halomod_Pk2D(cosmo, hmc, pg, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
+pk_gm = ccl.halos.halomod_Pk2D(cosmo, hmc, pG, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-matter
-pk_em = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
+pk_em = (1/gas_norm) * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-galaxy
-pk_eg = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pg, lk_arr=lk_arr, a_arr=a_arr)
+pk_eg = (1/gas_norm) * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pG, lk_arr=lk_arr, a_arr=a_arr)
 
 # Electron-galaxy one-halo term only
-pk_eg_1h = (1/rho_mean) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pg, lk_arr=lk_arr, a_arr=a_arr, get_2h=False)
+pk_eg_1h = (1/gas_norm) * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pG, lk_arr=lk_arr, a_arr=a_arr, get_2h=False)
 
 # Electron-electron
-pk_ee = (1/rho_mean**2) * ccl.halos.halomod_Pk2D(cosmo, hmc, pe, prof2=pe, lk_arr=lk_arr, a_arr=a_arr)
+pk_ee = (1/gas_norm**2) * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pGas, lk_arr=lk_arr, a_arr=a_arr)
 
 # Galaxy-galaxy
-pk_gg = ccl.halos.halomod_Pk2D(cosmo, hmc, pg, prof2=pg, lk_arr=lk_arr, a_arr=a_arr)
+pk_gg = ccl.halos.halomod_Pk2D(cosmo, hmc, pG, prof2=pG, lk_arr=lk_arr, a_arr=a_arr)
 
 #%%
 # 3D power spectra calculations 
