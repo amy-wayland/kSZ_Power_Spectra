@@ -464,7 +464,7 @@ bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200m)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200m, concentration=cM, fourier_analytic=True)
 
 # Galaxy overdensity
-pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
+pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)#, integration_method='FFTLog')
 
 # Halo model integral calculator
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200m, log10M_max=15., log10M_min=10., nM=32)
@@ -474,10 +474,11 @@ profile_parameters = {"lMc": 14.0, "beta": 0.6, "eta_b": 0.5, "A_star": 0.03}
 pGas = hp.HaloProfileDensityHE(mass_def=hmd_200m, concentration=cM, kind="rho_gas", **profile_parameters)
 pGas.update_precision_fftlog(padding_lo_fftlog=1e-2, padding_hi_fftlog=1e2, n_per_decade=300, plaw_fourier=-2.0)
 
-# Function to normalise into an overdensity
+
 def p_gas_normalisation(pgas, a):
     '''
     Calculates the physical gas density at scale factor a for a given gas profile p_gas
+    to normalise the gas density profile
     
     '''
     def rho_gas_integrand(M):
@@ -486,10 +487,37 @@ def p_gas_normalisation(pgas, a):
     
     return hmc.integrate_over_massfunc(rho_gas_integrand, cosmo, a) / a**3
 
-# Normalisation factor
-z_val = 0.55
-a = 1/(1+z_val)
-gas_norm = p_gas_normalisation(pGas, a)
+
+def pk_xe(cosmo, hmc, prof, *,
+                 prof2=None, prof_2pt=None,
+                 p_of_k_a=None,
+                 get_1h=True, get_2h=True,
+                 lk_arr=None, a_arr=None,
+                 extrap_order_lok=1, extrap_order_hik=2,
+                 smooth_transition=None, suppress_1h=None, extrap_pk=False):
+    '''
+    Returns a Pk2D object of the cross-correlation between the electron overdensity
+    with another overdensity profile x correctly normalised
+
+    '''
+    pk_arr = ccl.halos.pk_2pt.halomod_power_spectrum(
+      cosmo, hmc, np.exp(lk_arr), a_arr,
+      prof, prof2=prof2, prof_2pt=prof_2pt, p_of_k_a=p_of_k_a,
+      get_1h=get_1h, get_2h=get_2h,
+      smooth_transition=smooth_transition, suppress_1h=suppress_1h,
+      extrap_pk=extrap_pk)
+    
+    if isinstance(prof2, hp.HaloProfileDensityHE):
+        pk_norm = np.array([p_gas_normalisation(prof, a)**2 for a in a_arr])
+    else:
+        pk_norm = np.array([p_gas_normalisation(prof, a) for a in a_arr])
+    
+    pk_arr_normalised = pk_arr / pk_norm[:, None]
+
+    return ccl.Pk2D(a_arr=a_arr, lk_arr=lk_arr, pk_arr=pk_arr_normalised,
+                extrap_order_lok=extrap_order_lok,
+                extrap_order_hik=extrap_order_hik,
+                is_logp=False)
 
 # Precompute halo properties
 nM_vals = precompute_nM(cosmo, M, a)
@@ -507,16 +535,16 @@ k_grid = np.logspace(-3, 2, 128)
 log10k_grid = np.log10(k_grid)
 
 # Arrays for Fourier transforms
+u_pM_grid = np.zeros((len(k_grid), len(M_grid)))
 u_pg_grid = np.zeros((len(k_grid), len(M_grid)))
 u_pe_grid = np.zeros((len(k_grid), len(M_grid)))
-u_pM_grid = np.zeros((len(k_grid), len(M_grid)))
 
 # Fill the grids
 for i, k_val in enumerate(k_grid):
     for j, M_val in enumerate(M_grid):
-        u_pg_grid[i, j] = pG.fourier(cosmo, k_val, M_val, a) / M_val
-        u_pe_grid[i, j] = pGas.fourier(cosmo, k_val, M_val, a) / gas_norm
         u_pM_grid[i, j] = pM.fourier(cosmo, k_val, M_val, a) / M_val
+        u_pg_grid[i, j] = pG.fourier(cosmo, k_val, M_val, a) / pG.get_normalization(cosmo, a, hmc=hmc)
+        u_pe_grid[i, j] = pGas.fourier(cosmo, k_val, M_val, a) / p_gas_normalisation(pGas, a)
 
 interp_pg = RectBivariateSpline(log10k_grid, log10M_grid, u_pg_grid)
 interp_pe = RectBivariateSpline(log10k_grid, log10M_grid, u_pe_grid)
@@ -564,49 +592,29 @@ def compute_P_B_mmg_3h(k):
 
 #%%
 
-test_k = 1e-2
+test_k_1 = 1e-2
+test_k_2 = 1e1
 
-P_test_T_1h_par = compute_P_T_1h_par(test_k)
-print(f"P_T_1h_par(k={test_k:.3e}) = {P_test_T_1h_par:.3e}")
+P_test_T_1h_par = compute_P_T_1h_par(test_k_2)
+print(f"P_T_1h_par = {P_test_T_1h_par:.3e}")
 
-P_test_T_4h_par = compute_P_T_4h_par(test_k)
-print(f"P_T_4h_par(k={test_k:.3e}) = {P_test_T_4h_par:.3e}")
+P_test_T_4h_par = compute_P_T_4h_par(test_k_1)
+print(f"P_T_4h_par = {P_test_T_4h_par:.3e}")
 
-P_test_B_mme_1h = compute_P_B_mme_1h(test_k)
-print(f"P_B_mme_1h(k={test_k:.2e}) = {P_test_B_mme_1h:.3e}")
+P_test_B_mme_1h = compute_P_B_mme_1h(test_k_2)
+print(f"P_B_mme_1h = {P_test_B_mme_1h:.3e}")
 
-P_test_B_mme_3h = compute_P_B_mme_3h(test_k)
-print(f"P_B_mme_3h(k={test_k:.2e}) = {P_test_B_mme_3h:.3e}")
+P_test_B_mme_3h = compute_P_B_mme_3h(test_k_1)
+print(f"P_B_mme_3h = {P_test_B_mme_3h:.3e}")
 
-P_test_B_mmg_1h = compute_P_B_mmg_1h(test_k)
-print(f"P_B_mmg_1h(k={test_k:.2e}) = {P_test_B_mmg_1h:.3e}")
+P_test_B_mmg_1h = compute_P_B_mmg_1h(test_k_2)
+print(f"P_B_mmg_1h = {P_test_B_mmg_1h:.3e}")
 
-P_test_B_mmg_3h = compute_P_B_mmg_3h(test_k)
-print(f"P_B_mmg_3h(k={test_k:.2e}) = {P_test_B_mmg_3h:.3e}")
+P_test_B_mmg_3h = compute_P_B_mmg_3h(test_k_1)
+print(f"P_B_mmg_3h = {P_test_B_mmg_3h:.3e}")
 
-P_test_T_4h_perp = compute_P_T_4h_perp(test_k)
-print(f"P_T_4h_perp(k={test_k:.3e}) = {P_test_T_4h_perp:.3e}")
-
-#%%
-import pyccl as ccl
-
-# Get critical density at z = 0 in Msun/Mpc^3
-rho_crit_0 = 2.775e11 * cosmo['h']**2  # Msun / Mpc^3
-
-# Get Omega_m at scale factor a
-Omega_m_a = ccl.omega_x(cosmo, a, 'matter')
-
-# Compute comoving matter density
-rho_m = Omega_m_a * rho_crit_0
-
-log10M = np.log10(M)
-dlog10M = np.log(10) * M
-rho_mass_integral = np.trapz(nM_vals * M * dlog10M, log10M)
-
-print(f"rho_m (from CCL): {rho_m:.3e} Msun/Mpc^3")
-print(f"rho_m (from n(M) integral): {rho_mass_integral:.3e} Msun/Mpc^3")
-print(f"Ratio: {rho_mass_integral / rho_m:.4f}")
-
+P_test_T_4h_perp = compute_P_T_4h_perp(test_k_1)
+print(f"P_T_4h_perp = {P_test_T_4h_perp:.3e}")
 
 #%%
 # Run over full k range
