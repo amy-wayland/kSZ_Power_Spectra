@@ -541,19 +541,32 @@ nl_pi = sigma_v**2 / n_bar
 #%%
 
 ells = np.geomspace(40, 7979, 7940)
-nl_pi_arr = np.full_like(ells, nl_pi)
-C_ells_TT = C_ells_act + nl_s4
-C_ells_gg = nl_pi_arr
 
 f_sky = 0.4
 d_ell = (7979 - 40) / 7940
 
-# Knox formula
-cov = np.sqrt((C_ells_gg * C_ells_TT + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell))
+nl_pi_arr = np.full_like(ells, nl_pi)
+C_ells_gg = nl_pi_arr
+
+# Limit 1: optimistic case where we have the CMB and noise only
+C_ells_TT_1 = C_ells_cmb + nl_s4
+cov_1 = np.sqrt((C_ells_gg * C_ells_TT_1 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell))
+
+# Limit 2: realistic case where we also account for secondary anisotropies
+C_ells_TT_2 = C_ells_act + nl_s4
+cov_2 = np.sqrt((C_ells_gg * C_ells_TT_2 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell))
 
 #%%
 
-plt.errorbar(ells, C_ells_perp_T, yerr=cov)
+plt.errorbar(ells, C_ells_perp_T, yerr=cov_1)
+plt.xlim(40, 8e3)
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.show()
+
+plt.errorbar(ells, C_ells_perp_T, yerr=cov_2)
 plt.xlim(40, 8e3)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
