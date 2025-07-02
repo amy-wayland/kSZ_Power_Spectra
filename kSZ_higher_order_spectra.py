@@ -279,27 +279,28 @@ def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_p
     k_mag = np.linalg.norm(k_vec)
     if k_mag < 1e-5:
         return 0.0
-
-    # Define integration grids
-    k_primes = np.logspace(-3, 1, n_k)
-    kpp_primes = np.logspace(-3, 1, n_k)
+    
+    # Integration grids
+    lk_min, lk_max = -3, 1
+    lkps = np.linspace(lk_min, lk_max, n_k)
+    lkpps = np.linspace(lk_min, lk_max, n_k)
+    kps = 10**lkps
+    kpps = 10**lkpps
     mu_primes = np.linspace(-0.99, 0.99, n_mu)
     mupp_primes = np.linspace(-0.99, 0.99, n_mu)
     phis = np.linspace(0, 2 * np.pi, n_phi)
     cos_phis = np.cos(phis)
     sin_phis = np.sin(phis)
-    
-    # Spacing between adjacent values in the integration grids
-    dk = np.gradient(k_primes)
-    dkp = np.gradient(kpp_primes)
+
+    dlk = (lk_max - lk_min) / (n_k - 1)
     dmu = 2 / n_mu
     dphi = 2 * np.pi / n_phi
 
     prefactor = aHf**2 / (2 * np.pi)**5
     result = 0.0
 
-    for i, kp in enumerate(k_primes):
-        for j, kpp in enumerate(kpp_primes):
+    for i, kp in enumerate(kps):
+        for j, kpp in enumerate(kpps):
             for mu1 in mu_primes:
                 sin_theta1 = np.sqrt(1 - mu1**2)
 
@@ -316,7 +317,7 @@ def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_p
                     T_vals = np.array([trispectrum_func(k_vec, kp_vec, kpp_vec, cosmo, a,M_vals, nM_vals, bM_vals,interp_pg, interp_pe, interp_pM, P_L_interp) for kpp_vec in kpp_vecs])
                     
                     # Approximate the 5D integral as a weighted 5D sum of the integrand times the volume elements
-                    block_sum = np.sum(kp * kpp * sin_theta1 * sin_theta2 * cos_phis * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
+                    block_sum = np.sum(kp * kpp * sin_theta1 * sin_theta2 * cos_phis * T_vals * kp * kpp * dlk * dlk * dmu * dmu * dphi)
                     result += block_sum
 
     final_result = prefactor * result
@@ -330,24 +331,26 @@ def P_T_par(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_pe
         return 0.0
 
     # Integration grids
-    k_primes = np.logspace(-3, 1, n_k)
-    kpp_primes = np.logspace(-3, 1, n_k)
+    lk_min, lk_max = -3, 1
+    lkps = np.linspace(lk_min, lk_max, n_k)
+    lkpps = np.linspace(lk_min, lk_max, n_k)
+    kps = 10**lkps
+    kpps = 10**lkpps
     mu_primes = np.linspace(-0.99, 0.99, n_mu)
     mupp_primes = np.linspace(-0.99, 0.99, n_mu)
     phis = np.linspace(0, 2 * np.pi, n_phi)
     cos_phis = np.cos(phis)
     sin_phis = np.sin(phis)
 
-    dk = np.gradient(k_primes)
-    dkp = np.gradient(kpp_primes)
+    dlk = (lk_max - lk_min) / (n_k - 1)
     dmu = 2 / n_mu
     dphi = 2 * np.pi / n_phi
 
     prefactor = aHf**2 / (2 * np.pi)**5
     result = 0.0
 
-    for i, kp in enumerate(k_primes):
-        for j, kpp in enumerate(kpp_primes):
+    for i, kp in enumerate(kps):
+        for j, kpp in enumerate(kpps):
             for mu1 in mu_primes:
                 sin_theta1 = np.sqrt(1 - mu1**2)
 
@@ -363,7 +366,7 @@ def P_T_par(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_pe
                     # Evaluate trispectrum for each phi
                     T_vals = np.array([trispectrum_func(k_vec, kp_vec, kpp_vec, cosmo, a, M_vals, nM_vals, bM_vals,interp_pg, interp_pe, interp_pM, P_L_interp) for kpp_vec in kpp_vecs])
 
-                    block_sum = np.sum(kp * kpp * mu1 * mu2 * T_vals * dk[i] * dkp[j] * dmu * dmu * dphi)
+                    block_sum = np.sum(kp * kpp * mu1 * mu2 * T_vals * kp * kpp * dlk * dlk * dmu * dmu * dphi)
                     result += block_sum
 
     final_result = prefactor * result / k_mag**2
@@ -377,20 +380,22 @@ def P_B_par(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pa, interp_pM
         return 0.0
 
     # Integration grids
-    k_primes = np.logspace(-3, 1, n_k)
+    lk_min, lk_max = -3, 1
+    lkps = np.linspace(lk_min, lk_max, n_k)
+    kps = 10**lkps
     mu_primes = np.linspace(-0.99, 0.99, n_mu)
     phis = np.linspace(0, 2 * np.pi, n_phi)
     cos_phis = np.cos(phis)
     sin_phis = np.sin(phis)
 
-    dk = np.gradient(k_primes)
+    dlk = (lk_max - lk_min) / (n_k - 1)
     dmu = 2 / n_mu
     dphi = 2 * np.pi / n_phi
 
     prefactor = aHf**2 / ((2 * np.pi)**3 * k_mag**2)
     result = 0.0
 
-    for i, kp in enumerate(k_primes):
+    for i, kp in enumerate(kps):
         for mu in mu_primes:
             sin_theta = np.sqrt(1 - mu**2)
 
@@ -402,7 +407,7 @@ def P_B_par(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pa, interp_pM
                 bispectrum_func(k_vec, kp_vec, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_pM, P_L_interp)
                 for kp_vec in kp_vecs])
 
-            block_sum = np.sum(k_mag * kp * mu * B_vals * dk[i] * dmu * dphi)
+            block_sum = np.sum(k_mag * kp * mu * B_vals * kp * dlk * dmu * dphi)
             result += block_sum
 
     final_result = prefactor * result
