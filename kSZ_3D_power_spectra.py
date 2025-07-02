@@ -9,114 +9,88 @@ from scipy.special import erf
 
 #%%
 
-def P_perp_1(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf):
-    '''
-    Calculates the contribution from the < \delta_g \delta_e^* > < \delta_m \delta_m^* > term for the perpendicular mode
+def P_perp_1(k, pk_mm, pk_eg, a, aHf):
 
-    Parameters
-    ----------
-    k : wavenumber k
-    k_prime_vals : values of k' over which to integrate
-    P_of_k_1 : P_{\delta_m \delta_m}(k')
-    P_of_k_2 : P_{\delta_g \delta_e}(\sqrt{k^2 + (k')^2 - 2 k k' \mu})
-
-    '''
     mu_vals = np.linspace(-0.99, 0.99, 128)
+    lk_vals = np.log(np.logspace(-4, 1, 128))
 
-    def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
-        return aHf**2 * (1/(2 * np.pi)**2) * (1 - mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
+    def integrand2(mu, kp):
+        q = np.sqrt(k**2 + kp**2 - 2*k*kp*mu)
+        return (1-mu**2) * pk_eg(q, a, cosmo)
 
-    def int_over_mu(k_prime):
-        vals = integrand(mu_vals, k_prime)
-        return np.trapz(vals, mu_vals)
+    def integrand1(lkp):
+        kp = np.exp(lkp)
+        integrand = integrand2(mu_vals, kp)
+        integral = np.trapz(integrand, mu_vals)
+        return kp * integral * pk_mm(kp, a, cosmo)
 
-    integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
+    integrand = np.array([integrand1(lk) for lk in lk_vals])
+    integral = np.trapz(integrand, lk_vals)
     
-    return np.trapz(integrand_k_prime, k_prime_vals)
+    return integral * aHf**2 / (2*np.pi)**2
 
 
-def P_perp_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf):
-    '''
-    Calculates the contribution from the < \delta_g \delta_m^* > < \delta_m \delta_e^* > term for the perpendicular mode
-    
-    Parameters
-    ----------
-    k : wavenumber k
-    k_prime_vals : values of k' over which to integrate
-    P_of_k_1 : P_{\delta_e \delta_m}(k')
-    P_of_k_2 : P_{\delta_g \delta_m}(\sqrt{k^2 + (k')^2 - 2 k k' \mu})
+def P_perp_2(k, pk_em, pk_gm, a, aHf):
 
-    '''
     mu_vals = np.linspace(-0.99, 0.99, 128)
+    lk_vals = np.log(np.logspace(-4, 1, 128))
     
-    def integrand(mu, k_prime):
-        p = k**2 + k_prime**2 - 2 * k * k_prime * mu
-        q = np.sqrt(p)
-        return aHf**2 * (1/(2 * np.pi)**2) * k_prime**2 * (1 - mu**2) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
+    def integrand2(mu, kp):
+        q = np.sqrt(k**2 + kp**2 - 2*k*kp*mu)
+        return -(1-mu**2) * pk_gm(q, a) / q**2
     
-    def int_over_mu(k_prime):
-        vals = integrand(mu_vals, k_prime)
-        return np.trapz(vals, mu_vals)
+    def integrand1(lkp):
+        kp = np.exp(lkp)
+        integrand = integrand2(mu_vals, kp)
+        integral = np.trapz(integrand, mu_vals)
+        return kp**3 * integral * pk_em(kp, a)
 
-    integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
+    integrand = np.array([integrand1(lk) for lk in lk_vals])
+    integral = np.trapz(integrand, lk_vals)
     
-    return np.trapz(integrand_k_prime, k_prime_vals)
+    return integral * aHf**2 / (2*np.pi)**2
    
 
-def P_par_1(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf):
-    '''
-    Calculates the contribution from the < \delta_g \delta_e^* > < \delta_m \delta_m^* > term for the parallel mode
+def P_par_1(k, pk_mm, pk_eg, a, aHf):
 
-    Parameters
-    ----------
-    k : wavenumber k
-    k_prime_vals : values of k' over which to integrate
-    P_of_k_1 : P_{\delta_m \delta_m}(k')
-    P_of_k_2 : P_{\delta_g \delta_e}(\sqrt{k^2 + (k')^2 - 2 k k' \mu})
-
-    '''
     mu_vals = np.linspace(-0.99, 0.99, 128)
+    lk_vals = np.log(np.logspace(-4, 1, 128))
 
-    def integrand(mu, k_prime):
-        q = np.sqrt(k**2 + k_prime**2 - 2 * k * k_prime * mu)
-        return aHf**2 * (1/(2 * np.pi)**2) * mu**2 * P_of_k_1(k_prime, a) * P_of_k_2(q, a)
+    def integrand2(mu, kp):
+        q = np.sqrt(k**2 + kp**2 - 2*k*kp*mu)
+        return mu**2 * pk_eg(q, a)
 
-    def int_over_mu(k_prime):
-        vals = integrand(mu_vals, k_prime)
-        return np.trapz(vals, mu_vals)
+    def integrand1(lkp):
+        kp = np.exp(lkp)
+        integrand = integrand2(mu_vals, kp)
+        integral = np.trapz(integrand, mu_vals)
+        return kp * integral * pk_mm(kp, a)
 
-    integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
+    integrand = np.array([integrand1(lk) for lk in lk_vals])
+    integral = np.trapz(integrand, lk_vals)
     
-    return np.trapz(integrand_k_prime, k_prime_vals)
+    return integral * aHf**2 / (2*np.pi)**2
 
 
-def P_par_2(k, k_prime_vals, P_of_k_1, P_of_k_2, a, aHf):
-    '''
-    Calculates the contribution from the < \delta_g \delta_m^* > < \delta_m \delta_e^* > term for the parallel mode
-    
-    Parameters
-    ----------
-    k : wavenumber k
-    k_prime_vals : values of k' over which to integrate
-    P_of_k_1 : P_{\delta_e \delta_m}(k')
-    P_of_k_2 : P_{\delta_g \delta_m}(\sqrt{k^2 + (k')^2 - 2 k k' \mu})
+def P_par_2(k, pk_em, pk_gm, a, aHf):
 
-    '''
     mu_vals = np.linspace(-0.99, 0.99, 128)
+    lk_vals = np.log(np.logspace(-4, 1, 128))
     
-    def integrand(mu, k_prime):
-        p = k**2 + k_prime**2 - 2 * k * k_prime * mu
-        q = np.sqrt(p)
-        return aHf**2 * (1/(2 * np.pi)**2) * (mu * k_prime * k) * (1 - mu * (k_prime/k)) * P_of_k_1(k_prime, a) * P_of_k_2(q, a) / (p + 1e-10)
+    def integrand2(mu, kp):
+        q = np.sqrt(k**2 + kp**2 - 2*k*kp*mu)
+        return mu * (k-kp*mu) * pk_gm(q, a) / q**2
     
-    def int_over_mu(k_prime):
-        vals = integrand(mu_vals, k_prime)
-        return np.trapz(vals, mu_vals)
+    def integrand1(lkp):
+        kp = np.exp(lkp)
+        integrand = integrand2(mu_vals, kp)
+        integral = np.trapz(integrand, mu_vals)
+        return kp**2 * integral * pk_em(kp, a)
 
-    integrand_k_prime = np.array([int_over_mu(k_p) for k_p in k_prime_vals])
+    integrand = np.array([integrand1(lk) for lk in lk_vals])
+    integral = np.trapz(integrand, lk_vals)
     
-    return np.trapz(integrand_k_prime, k_prime_vals)
+    return integral * aHf**2 / (2*np.pi)**2
 
 
 #%%
@@ -135,7 +109,6 @@ cosmo = ccl.Cosmology(**COSMO_P18)
 cosmo.compute_growth()
 
 k_vals = np.logspace(-3, 1, 128)
-k_prime_vals = np.logspace(-3, 1, 128)
 lk_arr = np.log(k_vals)
 a_arr = np.linspace(0.1, 1, 32)
 
@@ -205,7 +178,7 @@ gas_norm = p_gas_normalisation(pGas, a)
 #%%
 
 # Matter-matter
-pk_mm = ccl.halos.halomod_Pk2D(cosmo, hmc, pM, lk_arr=np.log(k_vals), a_arr=a_arr)
+pk_mm = ccl.halos.halomod_Pk2D(cosmo, hmc, pM, lk_arr=lk_arr, a_arr=a_arr)
 
 # Galaxy-matter
 pk_gm = ccl.halos.halomod_Pk2D(cosmo, hmc, pG, prof2=pM, lk_arr=lk_arr, a_arr=a_arr)
@@ -222,12 +195,16 @@ pk_eg_1h = (1/gas_norm) * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pG, lk_
 # Electron-electron
 pk_ee = (1/gas_norm)**2 * ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pGas, lk_arr=lk_arr, a_arr=a_arr)
 
+# Galaxy-galaxy
+pk_gg = ccl.halos.halomod_Pk2D(cosmo, hmc, pG, prof2=pG, lk_arr=lk_arr, a_arr=a_arr)
+
 # Plot the different contributions
 plt.plot(k_vals, pk_mm(k_vals, a), label=r'm-m', color="tab:blue")
 plt.plot(k_vals, pk_gm(k_vals, a), label=r'g-m', color="tab:red")
 plt.plot(k_vals, pk_em(k_vals, a), label=r'e-m', color="tab:cyan")
 plt.plot(k_vals, pk_eg(k_vals, a), label=r'e-g', color="tab:purple")
 plt.plot(k_vals, pk_ee(k_vals, a), label=r'e-e', color="tab:pink")
+plt.plot(k_vals, pk_gg(k_vals, a), label=r'g-g', color="tab:green")
 plt.loglog()
 plt.xlim(1e-3, 1e1)
 plt.xlabel(r'$k$', fontsize=20)
@@ -243,13 +220,13 @@ plt.show()
 #%%
 
 # Perpendicular mode
-P_of_k_perp_1 = np.array([P_perp_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf) for k in k_vals])
-P_of_k_perp_2 = np.array([P_perp_2(k, k_prime_vals, pk_em, pk_gm, a, aHf) for k in k_vals])
-P_of_k_perp_T = P_of_k_perp_1 - P_of_k_perp_2
+P_of_k_perp_1 = np.array([P_perp_1(k, pk_mm, pk_eg, a, aHf) for k in k_vals])
+P_of_k_perp_2 = np.array([P_perp_2(k, pk_em, pk_gm, a, aHf) for k in k_vals])
+P_of_k_perp_T = P_of_k_perp_1 + P_of_k_perp_2
 
 # Parallel mode
-P_of_k_par_1 = np.array([P_par_1(k, k_prime_vals, pk_mm, pk_eg, a, aHf) for k in k_vals])
-P_of_k_par_2 = np.array([P_par_2(k, k_prime_vals, pk_em, pk_gm, a, aHf) for k in k_vals])
+P_of_k_par_1 = np.array([P_par_1(k, pk_mm, pk_eg, a, aHf) for k in k_vals])
+P_of_k_par_2 = np.array([P_par_2(k, pk_em, pk_gm, a, aHf) for k in k_vals])
 P_mm = aHf**2 * pk_mm(k_vals, a) / ((2 * np.pi)**3 * k_vals**2)
 P_of_k_par_T = P_of_k_par_1 + P_of_k_par_2 # + P_mm
 
@@ -260,7 +237,7 @@ P_of_k_par_T = P_of_k_par_1 + P_of_k_par_2 # + P_mm
 
 plt.plot(k_vals, P_of_k_perp_T, label=r'$P_{q_\perp,1} + P_{q_\perp,2}$', color='tab:red')
 plt.plot(k_vals, P_of_k_perp_1, label=r'$P_{q_\perp,1}$', color='tab:blue', linestyle='--')
-plt.plot(k_vals, P_of_k_perp_2, label=r'$-P_{q_\perp,2}$', color='tab:cyan', linestyle='--')
+plt.plot(k_vals, -P_of_k_perp_2, label=r'$-P_{q_\perp,2}$', color='tab:cyan', linestyle='--')
 plt.xlim(1e-3, 1e1)
 plt.xlabel(r'$k$', fontsize=20)
 plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=20)
