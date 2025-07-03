@@ -2258,12 +2258,20 @@ class _HaloProfileHE_Amy(ccl.halos.HaloProfile):
         
         return Fqg
     
-    def _norm(self, cosmo, M, a):
+    def _norm_b(self, cosmo, M, a):
+        M_use = np.atleast_1d(M)
         fb = get_fb(cosmo)
-        M = self.mass_def()
-        self.r_s = self.mass_def.get_radius(cosmo, self._M_use, a) / a
+        self.r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
         Ig0 = 1 # place holder for I(gamma, q=0) # self._integ_interp() 
-        return M * fb / (4 * np.pi * self.r_s**3 * Ig0)
+        return M_use * fb / (4 * np.pi * self.r_s**3 * Ig0)
+    
+    def _norm_e(self, cosmo, M, a):
+        M_use = np.atleast_1d(M)
+        fe = self._get_fractions(cosmo, M_use)[1]
+        Delta = self.mass_def.get_Delta(cosmo, a)
+        r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use)
+        r_ej =  0.75 * self.eta_b * r_esc
+        return M_use * fe / (2 * np.pi * r_ej**2)**(3/2)
     
     def _fourier(self, cosmo, k, M, a):
         if self._fourier_interp is None:
@@ -2284,17 +2292,24 @@ class _HaloProfileHE_Amy(ccl.halos.HaloProfile):
         
         ff = self._fourier_interp(ev).reshape([-1, nk])
         ff = np.exp(ff)
-        nn = self._norm(cosmo, M_use, a)
+        nn = self._norm_b(cosmo, M_use, a)
         
-        prof = (4 * np.pi * xrDelta**3 * nn)[:, None] * ff
+        prof_b = (4 * np.pi * xrDelta**3 * nn)[:, None] * ff
         
         if np.ndim(k) == 0:
-            prof = np.squeeze(prof, axiss=-1)
+            prof_b = np.squeeze(prof_b, axis=-1)
             
         if np.ndim(M) == 0:
-            prof = np.squeeze(prof, axis=0)
+            prof_b = np.squeeze(prof_b, axis=0)
             
-        return prof
+        Delta = self.mass_def.get_Delta(cosmo, a)
+        r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use)
+        r_ej =  0.75 * self.eta_b * r_esc
+        
+        nn_e = self._norm_e(cosmo, M_use, a)
+        prof_e = nn_e * np.exp(-0.5 * r_ej**2 * xrDelta)
+            
+        return prof_b + prof_e
 
     def _real(self, cosmo, r, M, a):
         # Real-space profile.
