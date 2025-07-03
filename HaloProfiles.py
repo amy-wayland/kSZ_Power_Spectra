@@ -4,6 +4,7 @@ from scipy.integrate import quad, simps
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.special import sici
 
+
 def get_prefac_rho(kind, XH=0.76):
     """Prefactor that transforms gas mas density into
     other types of density, depending on the hydrogen mass
