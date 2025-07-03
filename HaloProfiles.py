@@ -2077,8 +2077,11 @@ class HaloProfileNFWBaryon(ccl.halos.HaloProfileMatter):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
-    
-class _HaloProfileHEamy(ccl.halos.HaloProfile):
+
+
+#%%    
+
+class _HaloProfileHE_Amy(ccl.halos.HaloProfile):
     """Gas density profile given by the sum of the density profile for
     the bound and the ejected gas, each modelled separetely for a halo
     in hydrostatic equilibrium.
@@ -2230,6 +2233,68 @@ class _HaloProfileHEamy(ccl.halos.HaloProfile):
         f_bound = (fb - f_star)*Mbeta/(1+Mbeta)
         f_ejected = fb-f_bound-f_star
         return f_bound, f_ejected, f_star
+    
+    def _form_factor(self, x, gamma):
+        return (np.log(1+x)/x)**gamma
+        
+    def _integ_interp(self):
+        qs = np.geomspace(1e-2, 1e2, 128)
+        gammas = np.arange(5.0, 10.0, 0.1)
+
+        def integrand(x, gamma):
+            return self._form_factor_fourier(x, gamma) * x
+        
+        f_arr = np.array(
+            [[quad(integrand, gamma, 1e-4, 100, weight="sin", wvar=q)[0] / q
+            for gamma in gammas] for q in qs])
+
+        Fqg = RegularGridInterpolator(
+            (np.log(qs), gammas),
+            np.log(f_arr),
+            bounds_error=False,
+            fill_value=None,
+            method='linear'
+        )
+        
+        return Fqg
+    
+    def _norm(self, cosmo, M, a):
+        fb = get_fb(cosmo)
+        M = self.mass_def()
+        self.r_s = self.mass_def.get_radius(cosmo, self._M_use, a) / a
+        Ig0 = 1 # place holder for I(gamma, q=0) # self._integ_interp() 
+        return M * fb / (4 * np.pi * self.r_s**3 * Ig0)
+    
+    def _fourier(self, cosmo, k, M, a):
+        if self._fourier_interp is None:
+            with ccl.UnlockInstance(self):
+                self._fourier_interp = self._integ_interp()
+                
+        M_use = np.atleast_1d(M)
+        k_use = np.atleast_1d(k)
+        
+        xc = self._xc(M_use, a)
+        xrDelta = xc * self.mass_def.get_radius(cosmo, M_use, a) / a
+        
+        qs = k_use[None, :] * xrDelta[:, None]
+        gammas = self._gamma(M_use, a)
+        nk = len(k_use)
+        ev = np.array(
+            [np.log(qs).flatten(), (np.ones(nk)[None, :] * gammas[:, None]).flatten()]).T
+        
+        ff = self._fourier_interp(ev).reshape([-1, nk])
+        ff = np.exp(ff)
+        nn = self._norm(cosmo, M_use, a)
+        
+        prof = (4 * np.pi * xrDelta**3 * nn)[:, None] * ff
+        
+        if np.ndim(k) == 0:
+            prof = np.squeeze(prof, axiss=-1)
+            
+        if np.ndim(M) == 0:
+            prof = np.squeeze(prof, axis=0)
+            
+        return prof
 
     def _real(self, cosmo, r, M, a):
         # Real-space profile.
@@ -2272,3 +2337,38 @@ class _HaloProfileHEamy(ccl.halos.HaloProfile):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
+
+
+class HaloProfileDensityHE_Amy(_HaloProfileHE_Amy):
+    def __init__(self, *, mass_def, concentration,
+                 lMc=14.0,
+                 beta=0.6,
+                 gamma=1.17,
+                 gamma_T=1.0,
+                 A_star=0.03,
+                 sigma_star=1.2,
+                 eta_b=0.5,
+                 epsilon=1.0,
+                 alpha_T=1.0,
+                 alpha_Tz=0.,
+                 alpha_Tm=0.,
+                 logTw0=6.5,
+                 Tw1=0.,
+                 kind="rho_gas"):
+        
+        super().__init__(mass_def=mass_def, concentration=concentration,
+                         lMc=lMc,
+                         beta=beta,
+                         gamma=gamma,
+                         gamma_T=gamma_T,
+                         A_star=A_star,
+                         sigma_star=sigma_star,
+                         eta_b=eta_b,
+                         epsilon=epsilon,
+                         alpha_T=alpha_T,
+                         alpha_Tz=alpha_Tz,
+                         alpha_Tm=alpha_Tm,
+                         logTw0=logTw0,
+                         Tw1=Tw1,                        
+                         kind=kind,
+                         quantity="density")
