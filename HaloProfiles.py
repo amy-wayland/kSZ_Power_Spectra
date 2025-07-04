@@ -2099,6 +2099,7 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         self.kind = kind
         self.quantity = quantity
         self.prefac_rho = get_prefac_rho(self.kind)
+        self._fourier_interp = None
         
         super().__init__(mass_def=mass_def, concentration=concentration)
     
@@ -2113,55 +2114,63 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
     
     def _form_factor(self, x):
         return (np.log(1+x)/x)**self.gamma
-    
-    def _norm_bound(self):
-        def integrand(x): 
-            return self._form_factor(x) * x**2
-        I = quad(integrand, 0, np.inf)[0]
-        return 4 * np.pi * I
         
     def _integ_interp(self):
         qs = np.geomspace(1e-2, 1e2, 128)
-        gammas = np.arange(5.0, 10.0, 0.1)
 
-        def integrand(x, gamma):
+        def integrand(x):
             return self._form_factor(x) * x
         
-        norm = self._norm_bound()
         f_arr = np.array(
-            [[quad(integrand, gamma, 1e-4, 100, weight="sin", wvar=q)[0] / (q * norm)
-            for gamma in gammas] for q in qs])
-
-        Fqg = RegularGridInterpolator(
-            (np.log(qs), gammas),
+            [quad(integrand, 1e-4, 100, weight="sin", wvar=q)[0] / q
+             for q in qs])
+        
+        f_arr[-1] = 1e-100
+        
+        Fqg = interp1d(
+            np.log(qs),
             np.log(f_arr),
             bounds_error=False,
-            fill_value=None,
-            method='linear'
+            fill_value='extrapolate',
+            kind='linear'
         )
         
         return Fqg
     
-    def _Ub_fourier(self, cosmo, M, a, k):
-        M_use = np.atleast_1d(M)
-        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
-        q = np.atleast_1d(k) * r_s
+    def _norm_bound(self):
         
-        if not hasattr(self, '_Fqg_interp'):
-            self._Fqg_interp = self._integ_interp()
+        def integrand(x): 
+            return self._form_factor(x) * x**2
+        
+        I = quad(integrand, 0, np.inf)[0]
+        
+        return 4 * np.pi * I
+    
+    def _Ub_fourier(self, cosmo, k, M, a):
+        
+        if self._fourier_interp is None:
+            with ccl.UnlockInstance(self):
+                self._fourier_interp = self._integ_interp()
+        
+        M_use = np.atleast_1d(M)
+        k_use = np.atleast_1d(k)
+        
+        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
+        qs = k_use[None, :] * r_s[:, None]
+        
+        ff = self._fourier_interp(np.log(qs))
+        ff = np.exp(ff)
+        nn = self._norm_bound()
+        prof = nn * ff / r_s**3
+        
+        if np.ndim(k) == 0:
+            prof = np.squeeze(prof, axis=-1)
+        if np.ndim(M) == 0:
+            prof = np.squeeze(prof, axis=0)
             
-        if np.any(q <= 0):
-            raise ValueError(f"Invalid q values (<= 0)")
+        return prof
     
-        gamma = self.gamma
-        log_q = np.clip(np.log(q), np.log(1e-2), np.log(1e2))
-    
-        interp_pts = np.stack([log_q, np.full_like(log_q, gamma)], axis=-1)
-        interp_vals = self._Fqg_interp(interp_pts)
-
-        return np.exp(interp_vals)
-    
-    def _Ue_fourier(self, cosmo, M, a, k):
+    def _Ue_fourier(self, cosmo, k, M, a):
         M_use = np.atleast_1d(M)
         Delta = self.mass_def.get_Delta(cosmo, a)
         r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
@@ -2171,14 +2180,9 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
     def _fourier(self, cosmo, k, M, a):
         M_use = np.atleast_1d(M)
         k_use = np.atleast_1d(k)
-        
-        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
-        Delta = self.mass_def.get_Delta(cosmo, a)
-        r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
-        r_ej =  0.75 * self.eta_b * r_esc
-        
-        Ub_k = np.array([self._Ub_fourier(cosmo, m_i, a, k_use) for m_i in M_use])
-        Ue_k = np.array([self._Ue_fourier(cosmo, m_i, a, k_use) for m_i in M_use])
+                
+        Ub_k = np.array([self._Ub_fourier(cosmo, k_use, m_i, a) for m_i in M_use])
+        Ue_k = np.array([self._Ue_fourier(cosmo, k_use, m_i, a) for m_i in M_use])
         
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
@@ -2200,23 +2204,24 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         Delta = self.mass_def.get_Delta(cosmo, a)
         r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
         r_ej =  0.75 * self.eta_b * r_esc
+        gamma = self.gamma
         
         x = r_use[None, :] / r_s[:, None]
-        norm = self._nprm_bound()
+        norm = self._norm_bound()
         
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        rho_b = fb * M[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x)
+        rho_b = fb * M[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x, gamma)
         rho_e = fe * M[:, None] * a**(-3) / (2 * np.pi * r_ej[:, None]**2)**1.5 * \
                 np.exp(-0.5 * (r[None, :] / r_ej[:, None])**2)
         
         prof = (rho_b + rho_e) * self.prefac_rho
         
         if np.ndim(r) == 0:
-            prof = prof[:, 0]
+            prof = np.squeeze(prof, axis=-1)
         if np.ndim(M) == 0:
-            prof = prof[0]
+            prof = np.squeeze(prof, axis=0)
         return prof
 
 class HaloProfileDensityHE_withFT(_HaloProfileHE_withFT):
