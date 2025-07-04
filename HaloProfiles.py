@@ -2077,6 +2077,202 @@ class HaloProfileNFWBaryon(ccl.halos.HaloProfileMatter):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
+    
+
+class _HaloProfileHEamy(ccl.halos.HaloProfile):
+    """Gas density profile given by the sum of the density profile for
+    the bound and the ejected gas, each modelled separetely for a halo
+    in hydrostatic equilibrium.
+
+    The density and mass fraction of the bound gas as well as the mass
+    fraction of the ejected gas taken from Mead 2020, and the density
+    of the ejected gas taken from Schneider & Teyssier 2016.
+
+    Profile is calculated in units of M_sun Mpc^-3 if
+    requesting mass density (`kind == 'rho_gas'`), or in cm^-3
+    if requesting a number density. Allowed values for `kind`
+    in the latter case are `'n_total'`, `'n_baryon'`, `'n_H'`,
+    `'n_electron'`.
+
+    Default values of all parameters correspond to the values
+    found in Mead et al. 2020.
+    """
+    def __init__(self, *, mass_def, concentration,
+                 lMc=14.0, beta=0.6, gamma=1.17,
+                 gamma_T=1.0,
+                 A_star=0.03, sigma_star=1.2,
+                 eta_b=0.5,
+                 alpha_T=1.0, alpha_Tz=0., alpha_Tm=0.,
+                 logTw0=6.5, Tw1=0.0,
+                 epsilon=1.0,
+                 logTAGN=None,
+                 kind="rho_gas",
+                 quantity="density"):
+        self._Bi = None
+        if logTAGN is not None:
+            lMc, gamma, alpha_T, logTw0, Tw1 = self.from_logTAGN(logTAGN)
+        self.logTAGN = logTAGN
+        self.lMc = lMc
+        self.beta = beta
+        self.gamma = gamma
+        self.gamma_T = gamma_T
+        self.A_star = A_star
+        self.eta_b = eta_b
+        self.alpha_T = alpha_T
+        self.alpha_Tz = alpha_Tz
+        self.alpha_Tm = alpha_Tm
+        self.logTw0 = logTw0
+        self.Tw1 = Tw1
+        self.epsilon = epsilon
+        self.sigma_star = sigma_star
+        self.kind = kind
+        self.quantity = quantity
+        self.prefac_rho = get_prefac_rho(self.kind)
+        self.norm_interp = self.get_dens_norm_interp()
+
+        super().__init__(mass_def=mass_def, concentration=concentration)
+    
+    def _F_bound(self, x, G):
+        return (np.log(1 + x) / x)**G
+
+    def get_dens_norm_interp(self):
+        cs = np.geomspace(1E-2, 100, 64)
+        gs = np.geomspace(0.1, 10, 64)
+        norms = np.array([[quad(lambda x: x**2*self._F_bound(x, g), 0, c)[0]
+                           for c in cs]
+                          for g in gs])
+        ip = RegularGridInterpolator((np.log(gs), np.log(cs)), np.log(norms))
+        return ip
+
+    def update_parameters(self,
+                          lMc=None,
+                          beta=None,
+                          gamma=None,
+                          gamma_T=None,
+                          A_star=None,
+                          sigma_star=None,
+                          alpha_T=None,
+                          alpha_Tz=None,
+                          alpha_Tm=None,
+                          logTw0=None,
+                          Tw1=None,
+                          epsilon=None,
+                          eta_b=None,
+                          logTw=None,
+                          logTAGN=None):
+        if logTAGN is not None:
+            lMc, gamma, alpha_T, logTw0, Tw1 = self.from_logTAGN(logTAGN)
+            self.logTAGN = logTAGN
+        if lMc is not None:
+            self.lMc = lMc
+        if logTw0 is not None:
+            self.logTw0 = logTw0
+        if Tw1 is not None:
+            self.Tw1 = Tw1
+        if epsilon is not None:
+            self.epsilon = epsilon
+        if beta is not None:
+            self.beta = beta
+        if gamma is not None:
+            self.gamma = gamma
+        if gamma_T is not None:
+            self.gamma_T = gamma_T
+        if A_star is not None:
+            self.A_star = A_star
+        if eta_b is not None:
+            self.eta_b = eta_b
+        if sigma_star is not None:
+            self.sigma_star = sigma_star
+        if alpha_T is not None:
+            self.alpha_T = alpha_T
+        if alpha_Tz is not None:
+            self.alpha_Tz = alpha_Tz
+        if alpha_Tm is not None:
+            self.alpha_Tm = alpha_Tm
+
+    def _build_BAHAMAS_interp(self):
+        if self._Bi is not None:
+            return
+        kwargs = {'kind': 'linear',
+                  'bounds_error': False,
+                  'fill_value': 'extrapolate'}
+        logTAGNs = np.array([7.6, 7.8, 8.0])
+        self._Bi = {}
+        lMci = interp1d(logTAGNs, np.array([13.1949, 13.5937, 14.2480]),
+                        **kwargs)
+        gammai = interp1d(logTAGNs, np.array([1.1647, 1.1770, 1.1966]),
+                          **kwargs)
+        alpha_Ti = interp1d(logTAGNs, np.array([0.7642, 0.8471, 1.0314]),
+                            **kwargs)
+        logTw0i = interp1d(logTAGNs, np.array([6.6762, 6.6545, 6.6615]),
+                           **kwargs)
+        Tw1i = interp1d(logTAGNs, np.array([-0.5566, -0.3652, -0.0617]),
+                        **kwargs)
+        self._Bi['lMc'] = lMci
+        self._Bi['gamma'] = gammai
+        self._Bi['alpha_T'] = alpha_Ti
+        self._Bi['logTw0'] = logTw0i
+        self._Bi['Tw1'] = Tw1i
+
+    def from_logTAGN(self, logTAGN):
+        self._build_BAHAMAS_interp()
+        lMc = self._Bi['lMc'](logTAGN)
+        gamma = self._Bi['gamma'](logTAGN)
+        alpha_T = self._Bi['alpha_T'](logTAGN)
+        logTw0 = self._Bi['logTw0'](logTAGN)
+        Tw1 = self._Bi['Tw1'](logTAGN)
+        return lMc, gamma, alpha_T, logTw0, Tw1
+
+    def _get_fractions(self, cosmo, M):
+        fb = get_fb(cosmo)
+        Mbeta = (cosmo['h']*M*10**(-self.lMc))**self.beta
+        f_star = self.A_star * \
+            np.exp(-0.5*((np.log10(cosmo["h"]*M)-12.5)/self.sigma_star)**2)
+        f_bound = (fb - f_star)*Mbeta/(1+Mbeta)
+        f_ejected = fb-f_bound-f_star
+        return f_bound, f_ejected, f_star
+
+    def _real(self, cosmo, r, M, a):
+        # Real-space profile.
+        # Output in units of eV/cm^3
+        r_use = np.atleast_1d(r)
+        M_use = np.atleast_1d(M)
+        am3 = 1/a**3
+
+        # Comoving virial radius
+        Delta = self.mass_def.get_Delta(cosmo, a)
+        rDelta = self.mass_def.get_radius(cosmo, M_use, a) / a
+        cM = self.concentration(cosmo, M_use, a)
+        rs = rDelta/cM
+        rs *= self.epsilon
+        x = r_use[None, :] / rs[:, None]
+
+        # Mass fractions
+        fb, fe, _ = self._get_fractions(cosmo, M)
+
+        # Bound gas
+        G = 1./(self.gamma-1)
+        xnorm = np.array([np.full_like(cM, G), cM]).T
+        norm = np.exp(self.norm_interp(np.log(xnorm)))
+        shape = self._F_bound(x, G)
+        rho_bound = (am3*M_use*fb/(4*np.pi*rs**3*norm))[:, None]*shape
+
+        # Ejected gas
+        # Eq. (2.13) of Schneider & Teyssier 2016
+        x_esc = (self.eta_b * 0.375 * np.sqrt(Delta) * cM)[:, None]
+        rho_ejected = (am3*M_use*fe/rs**3)[:, None] * \
+            np.exp(-0.5*(x/x_esc)**2)/(2*np.pi*x_esc**2)**1.5
+
+        if self.quantity == 'density':
+            prof = (rho_bound + rho_ejected) * self.prefac_rho
+        else:
+            print('Quantity must be density.')
+
+        if np.ndim(r) == 0:
+            prof = np.squeeze(prof, axis=-1)
+        if np.ndim(M) == 0:
+            prof = np.squeeze(prof, axis=0)
+        return prof
 
 
 #%%    

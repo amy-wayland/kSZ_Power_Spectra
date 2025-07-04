@@ -328,7 +328,6 @@ P_of_k_2d_par_2 = P_of_k_2d_par_2[:, sorted_indices]
 pk2d_par_1 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_1.T, is_logp=False)
 pk2d_par_2 = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_par_2.T, is_logp=False)
 
-
 #%%
 # Create custom tracers to calculate the angular power spectrum
 
@@ -497,14 +496,54 @@ pk2d_par_2_TT = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_vals), pk_arr=P_of_k_2d_pa
 
 #%%
 
+# Angular power spectra for C_l^{g g} and C_l^{T T}
+
+C_ells_perp_1_gg = perp_prefac * ccl.angular_cl(cosmo, tg_perp, tg_perp, ells, p_of_k_a=pk2d_perp_1_gg)
+C_ells_perp_2_gg = perp_prefac * ccl.angular_cl(cosmo,tg_perp, tg_perp, ells, p_of_k_a=pk2d_perp_2_gg)
+C_ells_perp_T_gg = C_ells_perp_1_gg + C_ells_perp_2_gg
+
+C_ells_par_1_gg = ccl.angular_cl(cosmo, tg_par, tg_par, ells, p_of_k_a=pk2d_par_1_gg)
+C_ells_par_2_gg = ccl.angular_cl(cosmo,tg_par, tg_par, ells, p_of_k_a=pk2d_par_2_gg)
+C_ells_par_T_gg = C_ells_par_1_gg + C_ells_par_2_gg
+
+#%%
+
+# Angular power spectra for C_l^{T T}
+
+C_ells_perp_1_TT = A**2 * perp_prefac * ccl.angular_cl(cosmo, tk_perp, tk_perp, ells, p_of_k_a=pk2d_perp_1_TT)
+C_ells_perp_2_TT = A**2 * perp_prefac * ccl.angular_cl(cosmo, tk_perp, tk_perp, ells, p_of_k_a=pk2d_perp_2_TT)
+C_ells_perp_T_TT = C_ells_perp_1_TT + C_ells_perp_2_TT
+
+C_ells_par_1_TT = A**2 * ccl.angular_cl(cosmo, tk_par, tk_par, ells, p_of_k_a=pk2d_par_1_TT)
+C_ells_par_2_TT = A**2 * ccl.angular_cl(cosmo,tk_par, tk_par, ells, p_of_k_a=pk2d_par_2_TT)
+C_ells_par_T_TT = C_ells_par_1_TT + C_ells_par_2_TT
+
+#%%
+
+# Plot the T-T auto-correlation to compare to Ma+Fry 2001
+
+D_ells_perp_TT = -ells * (ells + 1) * C_ells_perp_T_TT / (2 * np.pi)
+
+plt.plot(ells, D_ells_perp_TT)
+plt.xlim(40, 8e3)
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{T T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="center right", ncol=2)
+#plt.savefig('kSZ_angular_power_spectra.pdf',  format="pdf", bbox_inches="tight")
+plt.show()
+
+#%%
+
 # CMB power spectrum
 
 cmb_data = np.loadtxt('data/camb_93159309_scalcls.dat', usecols=(0,1))
 ell_vals_full = cmb_data[:,0]
 ell_vals_cmb = ell_vals_full[38:7978]
 T_cmb = 2.725e6 # micro Kelvin
-D_ells_full = cmb_data[:,1] / T_cmb**2
-D_ells_cmb = D_ells_full[38:7978] / T_cmb**2
+D_ells_full = cmb_data[:,1]
+D_ells_cmb = D_ells_full[38:7978]
 C_ells_cmb = np.array([2 * np.pi * D_ells_cmb[i] * 1/(ell_vals_cmb[i] * (ell_vals_cmb[i]+1)) for i in range(len(ell_vals_cmb))]) / T_cmb**2
 
 #%%
@@ -532,7 +571,7 @@ Nwhite = DT**2*(np.pi/180/60)**2
 
 # S4-only noise
 T_cmb = 2.725e6 # micro Kelvin
-nl_s4 = (Nwhite * (1 + (l_s4/lknee)**aknee)/beam**2) / T_cmb**2
+nl_s4 = (Nwhite * (1 + (l_s4/lknee)**aknee)/beam**2)
 
 # Combine with Planck on large scales
 nl_s4 = (1/(1/nl_s4+1/nl_base)) / T_cmb**2
@@ -566,15 +605,15 @@ f_sky = 0.4
 d_ell = (7979 - 40) / 7940
 
 nl_pi_arr = np.full_like(ells, nl_pi)
-C_ells_gg = nl_pi_arr
+C_ells_gg = nl_pi_arr + C_ells_perp_T_gg
 
 # Limit 1: optimistic case where we have the CMB and noise only
 C_ells_TT_1 = C_ells_cmb + nl_s4
-cov_1 = (C_ells_gg * C_ells_TT_1 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell)
+cov_1 = np.sqrt((C_ells_gg * C_ells_TT_1 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell))
 
 # Limit 2: realistic case where we also account for secondary anisotropies
 C_ells_TT_2 = C_ells_act + nl_s4
-cov_2 = (C_ells_gg * C_ells_TT_2 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell)
+cov_2 = np.sqrt((C_ells_gg * C_ells_TT_2 + C_ells_perp_T**2) / (f_sky * (2 * ells + 1) * d_ell))
 
 print(cov_1)
 print(cov_2)
@@ -585,7 +624,7 @@ plt.errorbar(ells, C_ells_perp_T, yerr=cov_1)
 plt.xlim(40, 8e3)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
-plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
+plt.ylabel(r'$C_{\ell, \perp}^{\pi T}$', fontsize=20)
 plt.tick_params(which='both', direction='in', width=1, length=3)
 plt.show()
 
@@ -593,6 +632,34 @@ plt.errorbar(ells, C_ells_perp_T, yerr=cov_2)
 plt.xlim(40, 8e3)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
-plt.ylabel(r'$C_{\ell}^{\pi T}$', fontsize=20)
+plt.ylabel(r'$C_{\ell, \perp}^{\pi T}$', fontsize=20)
 plt.tick_params(which='both', direction='in', width=1, length=3)
 plt.show()
+
+#%%
+
+plt.plot(ells, C_ells_cmb, label="Primary CMB", color='tab:blue')
+plt.plot(ells, C_ells_act, label="ACT secondary", color='tab:red')
+plt.plot(ells, nl_s4, label="Noise", color='tab:cyan')
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$N_{\ell}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="best")
+plt.show()
+
+plt.plot(ells, nl_pi_arr, label="Shot noise", color='tab:blue')
+plt.plot(ells, C_ells_perp_T_gg, label="Clustering", color='tab:red')
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$N_{\ell}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=12, frameon=False, loc="best")
+plt.show()
+
+sn_squared_1 = np.sum((C_ells_perp_T**2) / (cov_1**2))
+print(f"Total S/N (optimistic): {np.sqrt(sn_squared_1):.2f}")
+
+sn_squared_2 = np.sum((C_ells_perp_T**2) / (cov_2**2))
+print(f"Total S/N (realistic): {np.sqrt(sn_squared_2):.2f}")
+
