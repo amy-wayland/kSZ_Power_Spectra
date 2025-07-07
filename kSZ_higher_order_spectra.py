@@ -1,9 +1,27 @@
 import numpy as np
-import pyccl as ccl
+#import pyccl as ccl
 import HaloProfiles as hp
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy.interpolate import RectBivariateSpline
+
+import scipy.integrate as si
+
+# Define a replacement function for simpson that uses trapz internally
+def simpson_replacement(y, *args, **kwargs):
+    # Extract optional x array argument for integration
+    x = kwargs.pop('x', None)
+    if x is None and args:
+        x = args[0]
+    if x is None:
+        return np.trapz(y)
+    else:
+        return np.trapz(y, x)
+
+# Monkey patch scipy.integrate.simpson before importing or using pyccl
+si.simpson = simpson_replacement
+
+import pyccl as ccl
 
 #%%
 # Perturbation theory kernels
@@ -274,7 +292,7 @@ def bispectrum_3h(k, kp, cosmo, a, M_vals, nM_vals, bM_vals, interp_pa, interp_p
 
 #%%
 
-def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_pe, interp_pM, trispectrum_func, P_L_interp, n_k=10, n_mu=10, n_phi=16):
+def P_T_perp(k_vec, cosmo, a, aHf, M_vals, nM_vals, bM_vals, interp_pg, interp_pe, interp_pM, trispectrum_func, P_L_interp, n_k=30, n_mu=30, n_phi=32):
 
     k_mag = np.linalg.norm(k_vec)
     if k_mag < 1e-5:

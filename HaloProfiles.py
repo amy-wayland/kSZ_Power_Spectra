@@ -4,8 +4,6 @@ from scipy.integrate import quad, simps
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from scipy.special import sici
 
-
-
 def get_prefac_rho(kind, XH=0.76):
     """Prefactor that transforms gas mas density into
     other types of density, depending on the hydrogen mass
@@ -2079,3 +2077,171 @@ class HaloProfileNFWBaryon(ccl.halos.HaloProfileMatter):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
+    
+#%%
+
+class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
+
+    def __init__(self, *, mass_def, concentration,
+                 lMc=14.0, beta=0.6, gamma=1.17,
+                 gamma_T=1.0,
+                 A_star=0.03, sigma_star=1.2,
+                 eta_b=0.5,
+                 kind="rho_gas",
+                 quantity="density"):
+
+        self.lMc = lMc
+        self.beta = beta
+        self.gamma = gamma
+        self.A_star = A_star
+        self.eta_b = eta_b
+        self.sigma_star = sigma_star
+        self.kind = kind
+        self.quantity = quantity
+        self.prefac_rho = get_prefac_rho(self.kind)
+        self._fourier_interp = None
+        
+        super().__init__(mass_def=mass_def, concentration=concentration)
+    
+    def _get_fractions(self, cosmo, M):
+        fb = get_fb(cosmo)
+        Mbeta = (cosmo['h']*M*10**(-self.lMc))**self.beta
+        f_star = self.A_star * \
+            np.exp(-0.5*((np.log10(cosmo["h"]*M)-12.5)/self.sigma_star)**2)
+        f_bound = (fb - f_star)*Mbeta/(1+Mbeta)
+        f_ejected = fb - f_bound - f_star
+        return f_bound, f_ejected, f_star
+    
+    def _form_factor(self, x):
+        return (np.log(1+x)/x)**self.gamma
+        
+    def _integ_interp(self):
+        qs = np.geomspace(1e-2, 1e2, 128)
+
+        def integrand(x):
+            return self._form_factor(x) * x
+        
+        f_arr = np.array(
+            [quad(integrand, 1e-4, 100, weight="sin", wvar=q)[0] / q
+             for q in qs])
+        
+        f_arr[-1] = 1e-100
+        
+        Fqg = interp1d(
+            np.log(qs),
+            np.log(f_arr),
+            bounds_error=False,
+            fill_value='extrapolate',
+            kind='linear'
+        )
+        
+        return Fqg
+    
+    def _norm_bound(self):
+        
+        def integrand(x): 
+            return self._form_factor(x) * x**2
+        
+        I = quad(integrand, 0, np.inf)[0]
+        
+        return 4 * np.pi * I
+    
+    def _Ub_fourier(self, cosmo, k, M, a):
+        
+        if self._fourier_interp is None:
+            with ccl.UnlockInstance(self):
+                self._fourier_interp = self._integ_interp()
+        
+        M_use = np.atleast_1d(M)
+        k_use = np.atleast_1d(k)
+        
+        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
+        qs = k_use[None, :] * r_s[:, None]
+        
+        ff = self._fourier_interp(np.log(qs))
+        ff = np.exp(ff)
+        nn = self._norm_bound()
+        prof = nn * ff / r_s**3
+        
+        if np.ndim(k) == 0:
+            prof = np.squeeze(prof, axis=-1)
+        if np.ndim(M) == 0:
+            prof = np.squeeze(prof, axis=0)
+            
+        return prof
+    
+    def _Ue_fourier(self, cosmo, k, M, a):
+        M_use = np.atleast_1d(M)
+        Delta = self.mass_def.get_Delta(cosmo, a)
+        r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
+        r_ej =  0.75 * self.eta_b * r_esc
+        return np.exp(-0.5 * (k * r_ej)**2)
+    
+    def _fourier(self, cosmo, k, M, a):
+        M_use = np.atleast_1d(M)
+        k_use = np.atleast_1d(k)
+                
+        Ub_k = np.array([self._Ub_fourier(cosmo, k_use, m_i, a) for m_i in M_use])
+        Ue_k = np.array([self._Ue_fourier(cosmo, k_use, m_i, a) for m_i in M_use])
+        
+        fb = self._get_fractions(cosmo, M_use)[0]
+        fe = self._get_fractions(cosmo, M_use)[1]
+        
+        prof_k = M[:, None] * a**(-3) * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
+        
+        if np.ndim(k) == 0:
+            prof_k = prof_k[:, 0]
+        if np.ndim(M) == 0:
+            prof_k = prof_k[0]
+
+        return prof_k
+
+    def _real(self, cosmo, r, M, a):
+        M_use = np.atleast_1d(M)
+        r_use = np.atleast_1d(r)
+        
+        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
+        Delta = self.mass_def.get_Delta(cosmo, a)
+        r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
+        r_ej =  0.75 * self.eta_b * r_esc
+        gamma = self.gamma
+        
+        x = r_use[None, :] / r_s[:, None]
+        norm = self._norm_bound()
+        
+        fb = self._get_fractions(cosmo, M_use)[0]
+        fe = self._get_fractions(cosmo, M_use)[1]
+        
+        rho_b = fb * M[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x, gamma)
+        rho_e = fe * M[:, None] * a**(-3) / (2 * np.pi * r_ej[:, None]**2)**1.5 * \
+                np.exp(-0.5 * (r[None, :] / r_ej[:, None])**2)
+        
+        prof = (rho_b + rho_e) * self.prefac_rho
+        
+        if np.ndim(r) == 0:
+            prof = np.squeeze(prof, axis=-1)
+        if np.ndim(M) == 0:
+            prof = np.squeeze(prof, axis=0)
+        return prof
+
+class HaloProfileDensityHE_withFT(_HaloProfileHE_withFT):
+    def __init__(self, *, mass_def, concentration,
+                 lMc=14.0,
+                 beta=0.6,
+                 gamma=1.17,
+                 gamma_T=1.0,
+                 A_star=0.03,
+                 sigma_star=1.2,
+                 eta_b=0.5,
+                 kind="rho_gas"):
+        
+        super().__init__(mass_def=mass_def, concentration=concentration,
+                         lMc=lMc,
+                         beta=beta,
+                         gamma=gamma,
+                         gamma_T=gamma_T,
+                         A_star=A_star,
+                         sigma_star=sigma_star,
+                         eta_b=eta_b,                       
+                         kind=kind,
+                         quantity="density")
