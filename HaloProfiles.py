@@ -2113,7 +2113,8 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         return f_bound, f_ejected, f_star
     
     def _form_factor(self, x):
-        return (np.log(1+x)/x)**self.gamma
+        G = 1/(self.gamma - 1)
+        return (np.log(1+x)/x)**G
         
     def _integ_interp(self):
         qs = np.geomspace(1e-2, 1e2, 128)
@@ -2187,14 +2188,14 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        prof_k = M[:, None] * a**(-3) * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
+        prof_k = M_use[:, None] * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
         
         if np.ndim(k) == 0:
             prof_k = prof_k[:, 0]
         if np.ndim(M) == 0:
             prof_k = prof_k[0]
 
-        return prof_k
+        return prof_k * self.prefac_rho
 
     def _real(self, cosmo, r, M, a):
         M_use = np.atleast_1d(M)
@@ -2204,7 +2205,6 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         Delta = self.mass_def.get_Delta(cosmo, a)
         r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
         r_ej =  0.75 * self.eta_b * r_esc
-        gamma = self.gamma
         
         x = r_use[None, :] / r_s[:, None]
         norm = self._norm_bound()
@@ -2212,8 +2212,8 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        rho_b = fb * M[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x, gamma)
-        rho_e = fe * M[:, None] * a**(-3) / (2 * np.pi * r_ej[:, None]**2)**1.5 * \
+        rho_b = fb * M_use[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x)
+        rho_e = fe * M_use[:, None] * a**(-3) / (2 * np.pi * r_ej[:, None]**2)**1.5 * \
                 np.exp(-0.5 * (r[None, :] / r_ej[:, None])**2)
         
         prof = (rho_b + rho_e) * self.prefac_rho
@@ -2223,6 +2223,7 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
+
 
 class HaloProfileDensityHE_withFT(_HaloProfileHE_withFT):
     def __init__(self, *, mass_def, concentration,
