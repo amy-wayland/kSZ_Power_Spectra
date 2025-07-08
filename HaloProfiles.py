@@ -2080,7 +2080,7 @@ class HaloProfileNFWBaryon(ccl.halos.HaloProfileMatter):
     
 #%%
 
-class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
+class HaloProfileDensityHE_withFT(ccl.halos.HaloProfile):
 
     def __init__(self, *, mass_def, concentration,
                  lMc=14.0, beta=0.6, gamma=1.17,
@@ -2145,7 +2145,7 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         
         I = quad(integrand, 0, np.inf)[0]
         
-        return 4 * np.pi * I
+        return I
     
     def _Ub_fourier(self, cosmo, k, M, a):
         
@@ -2156,13 +2156,15 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         M_use = np.atleast_1d(M)
         k_use = np.atleast_1d(k)
         
-        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
+        rDelta = self.mass_def.get_radius(cosmo, M_use, a) / a
+        cM = self.concentration(cosmo, M_use, a)
+        r_s = rDelta/cM
         qs = k_use[None, :] * r_s[:, None]
         
         ff = self._fourier_interp(np.log(qs))
         ff = np.exp(ff)
         nn = self._norm_bound()
-        prof = nn * ff / r_s**3
+        prof = ff / nn
         
         if np.ndim(k) == 0:
             prof = np.squeeze(prof, axis=-1)
@@ -2188,7 +2190,7 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        prof_k = M_use[:, None] * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
+        prof_k = M_use[:, None] * a**(-3) * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
         
         if np.ndim(k) == 0:
             prof_k = prof_k[:, 0]
@@ -2200,8 +2202,10 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
     def _real(self, cosmo, r, M, a):
         M_use = np.atleast_1d(M)
         r_use = np.atleast_1d(r)
-        
-        r_s = self.mass_def.get_radius(cosmo, M_use, a) / a
+
+        rDelta = self.mass_def.get_radius(cosmo, M_use, a) / a
+        cM = self.concentration(cosmo, M_use, a)
+        r_s = rDelta/cM
         Delta = self.mass_def.get_Delta(cosmo, a)
         r_esc = 0.5 * np.sqrt(Delta) * self.mass_def.get_radius(cosmo, M_use, a)
         r_ej =  0.75 * self.eta_b * r_esc
@@ -2223,26 +2227,14 @@ class _HaloProfileHE_withFT(ccl.halos.HaloProfile):
         if np.ndim(M) == 0:
             prof = np.squeeze(prof, axis=0)
         return prof
-
-
-class HaloProfileDensityHE_withFT(_HaloProfileHE_withFT):
-    def __init__(self, *, mass_def, concentration,
-                 lMc=14.0,
-                 beta=0.6,
-                 gamma=1.17,
-                 gamma_T=1.0,
-                 A_star=0.03,
-                 sigma_star=1.2,
-                 eta_b=0.5,
-                 kind="rho_gas"):
+    
+    def get_normalization(self, cosmo, a, *, hmc):
+        '''
+        Calculates the physical gas density at scale factor a
         
-        super().__init__(mass_def=mass_def, concentration=concentration,
-                         lMc=lMc,
-                         beta=beta,
-                         gamma=gamma,
-                         gamma_T=gamma_T,
-                         A_star=A_star,
-                         sigma_star=sigma_star,
-                         eta_b=eta_b,                       
-                         kind=kind,
-                         quantity="density")
+        '''
+        def rho_gas_integrand(M):
+            fb, fe, fs = self._get_fractions(cosmo, M)
+            return (fb + fe) * M * self.prefac_rho / a**3
+        
+        return hmc.integrate_over_massfunc(rho_gas_integrand, cosmo, a)
