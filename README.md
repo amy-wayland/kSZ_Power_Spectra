@@ -1,11 +1,11 @@
 # kSZ_Power_Spectra
 
-data : folder containing Simons Observatory noise baseline and the CMB power spectrum from CAMB
+data : folder containing CMB and ACT data
 
-HaloProfiles.py : class containing code to calculate the electron density profile based on La Posta+ 2024
+HaloProfiles.py : class containing code to calculate the electron density profile from La Posta+ 2024
 
-kSZ_3D_power_spectra.py : calculates the 3D power spectra for the transverse and longitudinal modes
+kSZclass.py : class containing code to calculate the 3D and angular power spectra
 
-kSZ_angular_power_spectra.py : calculates the angular power spectra for the transverse and longitudinal modes
+kSZcalculations.py : calculates the 3D and angular power spectra using kSZclass.py
 
-kSZ_higher_order.py : calculates the contribution to the 3D power spectra from the bispectrum and trispectrum
+kSZ_higher_order_spectra.py : calculates the contribution to the 3D power spectra from the bispectrum and trispectrum
