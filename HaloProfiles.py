@@ -2216,8 +2216,8 @@ class HaloProfileDensityHE_withFT(ccl.halos.HaloProfile):
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        rho_b = fb * M_use[:, None] * a**(-3) / (4 * np.pi * r_s[:, None]**3 * norm) * self._form_factor(x)
-        rho_e = fe * M_use[:, None] * a**(-3) / (2 * np.pi * r_ej[:, None]**2)**1.5 * \
+        rho_b = fb * M_use[:, None] / (4 * np.pi * a**3 * r_s[:, None]**3 * norm) * self._form_factor(x)
+        rho_e = fe * M_use[:, None] / (2 * np.pi * a**3 * r_ej[:, None]**2)**1.5 * \
                 np.exp(-0.5 * (r[None, :] / r_ej[:, None])**2)
         
         prof = (rho_b + rho_e) * self.prefac_rho
