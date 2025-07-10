@@ -209,18 +209,18 @@ plt.show()
 ells = np.geomspace(2, 1e4, 256)
 
 # Transverse auto- and cross-correlations
-Clt_gk = kSZ.get_Cl(pkt_gk1, pkt_gk2, ells, kind="perp", ab="gk")
+Clt_gk = kSZ.get_Cl(pkt_gk1, pkt_gk2, ells, kind="perp", ab="eg")
 Clt_gg = kSZ.get_Cl(pkt_gg1, pkt_gg2, ells, kind="perp", ab="gg")
-Clt_kk = kSZ.get_Cl(pkt_kk1, pkt_kk2, ells, kind="perp", ab="kk")
+Clt_kk = kSZ.get_Cl(pkt_kk1, pkt_kk2, ells, kind="perp", ab="ee")
 
 # Galaxy-kSZ cross-correlation (longitudinal)
-Clp_gk = kSZ.get_Cl(pkp_gk1, pkp_gk2, ells, kind="par", ab="gk")
+Clp_gk = kSZ.get_Cl(pkp_gk1, pkp_gk2, ells, kind="par", ab="eg")
 
 # Galaxy-kSZ cross-correlation (transverse) without two-halo term
-Clt_gk_1h = kSZ.get_Cl(pkt_gk1_1h, pkt_gk2, ells, kind="perp", ab="gk")
+Clt_gk_1h = kSZ.get_Cl(pkt_gk1_1h, pkt_gk2, ells, kind="perp", ab="eg")
 
 # Galaxy-kSZ cross-correlation (transverse) with satellites
-Clt_gk_sat = kSZ.get_Cl(pkt_gk1_sat, pkt_gk2, ells, kind="perp", ab="gk")
+Clt_gk_sat = kSZ.get_Cl(pkt_gk1_sat, pkt_gk2, ells, kind="perp", ab="eg")
 
 #%%
 
