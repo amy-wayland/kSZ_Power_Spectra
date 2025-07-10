@@ -2190,7 +2190,7 @@ class HaloProfileDensityHE_withFT(ccl.halos.HaloProfile):
         fb = self._get_fractions(cosmo, M_use)[0]
         fe = self._get_fractions(cosmo, M_use)[1]
         
-        prof_k = M_use[:, None] * a**(-3) * (fb[:, None] * Ub_k + fe[:, None] * Ue_k)
+        prof_k = M_use[:, None] * (fb[:, None] * Ub_k + fe[:, None] * Ue_k) / a**3
         
         if np.ndim(k) == 0:
             prof_k = prof_k[:, 0]
