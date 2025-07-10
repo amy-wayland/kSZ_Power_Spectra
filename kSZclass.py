@@ -377,7 +377,23 @@ class Satellites:
 class HigherOrder:
     
     def __init__(self, cosmo, k_arr, a, M_vals, nM_vals, bM_vals, interp_pM, interp_pG, interp_pE, interp_P_L):
+        '''
+        Class to calculate the higher order power spectra for the kSZ effect
         
+        Parameters
+        ----------
+        cosmo: pyccl cosmology object
+        k_arr: numpy array of wavenumbers
+        a: scale factor value
+        M_vals: array of halo masses in units of solar masses
+        nM_vals: halo mass function array computed for M_vals
+        bM_vals: halo bias array computed for M_vals
+        interp_pM: interpolator for the matter overdensity
+        interp_pG: interpolator for the galaxy overdensity
+        interp_pE: interpolator for the electron overdensity
+        interp_P_L: interpolator for the linear matter power spectrum
+        
+        '''
         self._cosmo = cosmo
         self._k_arr = k_arr
         self._a = a
@@ -396,6 +412,11 @@ class HigherOrder:
     
     
     def _get_profiles(self, k_val):
+        '''
+        Computes the halo profiles for matter, galaxies, and electrons for
+        a given value of k using the interpolators interp_pA where A = {M,G,E}
+
+        '''
         log10k = np.log10(k_val)
         uM = self._interp_pM.ev(log10k, self._log10M)
         uG = self._interp_pG.ev(log10k, self._log10M)
@@ -404,12 +425,20 @@ class HigherOrder:
     
         
     def _P_L(self, k_vec):
+        '''
+        Computes the linear matter power spectrum
+
+        '''
         k_norm = np.clip(np.linalg.norm(k_vec), 1e-4, 50)
         return max(self._interp_P_L(k_norm), 0.0)
     
     
     def _F2(self, k1, k2):
-        
+        '''
+        Computes the second-order perturbation theory density kernel
+        for wavevectors k1 and k2
+
+        '''
         k1_norm = np.linalg.norm(k1)
         k2_norm = np.linalg.norm(k2)
         dot_prod = np.dot(k1, k2)
@@ -422,7 +451,11 @@ class HigherOrder:
 
 
     def _G2(self, k1, k2):
-        
+        '''
+        Computes the second-order perturbation theory velocity kernel
+        for wavevectors k1 and k2
+
+        '''
         k1_norm = np.linalg.norm(k1)
         k2_norm = np.linalg.norm(k2)
         dot_prod = np.dot(k1, k2)
@@ -435,7 +468,11 @@ class HigherOrder:
         
     
     def _Q(self, k1, k2, k3):
-        
+        '''
+        Computes the non-linear coupling between the kernels F2 and G2 
+        for wavevectors k1, k2, k3
+
+        '''
         k123 = k1 + k2 + k3
         k23 = k2 + k3
         k1_norm = np.linalg.norm(k1)
@@ -455,11 +492,20 @@ class HigherOrder:
     
     
     def _F3(self, k1, k2, k3):
+        '''
+        Computes the third-order perturbation theory density kernel
+        for wavevectors k1, k2, k3
+
+        '''
         return (1/54) * (self._Q(k1, k2, k3) + self._Q(k2, k3, k1) + self._Q(k3, k1, k2))
 
     
     def _T_1122(self, k, kp, kpp):
-        
+        '''
+        Computes the contribution T_{1122} to the tree level trispectrum 
+        for wavevectors k, kp, kpp
+
+        '''
         k1 = k - kp
         k2 = -(k - kpp)
         k3 = kp
@@ -484,7 +530,11 @@ class HigherOrder:
     
     
     def _T_1113(self, k, kp, kpp):
-        
+        '''
+        Computes the contribution T_{1113} to the tree level trispectrum 
+        for wavevectors k, kp, kpp
+
+        '''
         k1 = k - kp
         k2 = -(k - kpp)
         k3 = kp
@@ -505,11 +555,18 @@ class HigherOrder:
     
     
     def _T_tree_level(self, k, kp, kpp):
+        '''
+        Computes the tree level trispectrum for wavevectors k, kp, kpp
+
+        '''
         return self._T_1122(k, kp, kpp) + self._T_1113(k, kp, kpp)
     
     
     def _B_tree_level(self, k, kp):
-        
+        '''
+        Computes the tree level bispectrum for wavevectors k and kp
+
+        '''
         k1 = k
         k2 = -kp
         k3 = -(k-kp)
@@ -522,7 +579,11 @@ class HigherOrder:
     
     
     def _T_1h(self, k, kp, kpp):
-        
+        '''
+        Computes the 1-halo contribution to the trispectrum
+        for wavevecotrs k, kp, kpp
+
+        '''
         k1 = k - kp
         k2 = -(k - kpp)
         k3 = kp
@@ -542,7 +603,11 @@ class HigherOrder:
     
     
     def _T_4h(self, k, kp, kpp):
-        
+        '''
+        Computes the 4-halo contribution to the trispectrum
+        for wavevecotrs k, kp, kpp
+
+        '''
         k1 = k - kp
         k2 = -(k - kpp)
         k3 = kp
@@ -572,7 +637,16 @@ class HigherOrder:
     
     
     def _B_1h(self, k, kp, density_kind):
+        '''
+        Computes the 1-halo contribution to the bispectrum
+        for wavevecotrs k and kp
         
+        Parameters
+        ----------
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either 'galaxy' or 'electron'
+
+        '''
         k1 = k
         k2 = -kp
         k3 = - (k - kp)
@@ -598,7 +672,16 @@ class HigherOrder:
     
     
     def _B_3h(self, k, kp, density_kind):
+        '''
+        Computes the 3-halo contribution to the bispectrum
+        for wavevecotrs k and kp
         
+        Parameters
+        ----------
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either 'galaxy' or 'electron'
+
+        '''
         k1 = k
         k2 = -kp
         k3 = - (k - kp)
@@ -632,7 +715,21 @@ class HigherOrder:
     
     
     def _P_tri(self, k_vec, tri_func, kind, nk=20, nmu=20, nphi=20):
-        
+        '''
+        Calculates the 3D power spectrum for the contribution from the trispectrum
+
+        Parameters
+        ----------
+        k_vec: wavevector
+        tri_func: trispectrum function
+                  can be either 'self._T_1h' or 'self._T_4h'
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        nk: number of points in grid spacing for k
+        nmu: number of points in grid spacing for mu
+        nphi: number of points in grid spacing for phi
+
+        '''
         k_mag = np.linalg.norm(k_vec)
         if k_mag < 1e-5:
             return 0.0
@@ -692,7 +789,23 @@ class HigherOrder:
     
     
     def _P_bi(self, k_vec, bi_func, kind, density_kind, nk=20, nmu=20, nphi=20):
-        
+        '''
+        Calculates the 3D power spectrum for the contribution from the bispectrum
+
+        Parameters
+        ----------
+        k_vec: wavevector
+        bi_func: bispectrum function
+                  can be either 'self._B_1h' or 'self._B_3h'
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either 'galaxy' or 'electron'
+        nk: number of points in grid spacing for k
+        nmu: number of points in grid spacing for mu
+        nphi: number of points in grid spacing for phi
+
+        '''
         k_mag = np.linalg.norm(k_vec)
         if k_mag < 1e-5:
             return 0.0
@@ -737,7 +850,23 @@ class HigherOrder:
         
     
     def compute_P(self, k, spectra_type, kind, term, density_kind=None):
+        '''
+        Computes the 3D power spectrum for a single k value
         
+        Parameters
+        ----------
+        k: wavenumber value
+        spectra_type: type of higher order spectrum
+                      can be either "bispectrum" or "trispectrum"
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        term: halo model term
+              can be either "1h" for both "trispectrum" and "bispectrum",
+              "3h" for "bispectrum", or "4h" for "trispectrum"
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either "galaxy" or "electron"
+        
+        '''
         k_vec = np.array([0, 0, k])
         
         if spectra_type == 'bispectrum':          
@@ -763,6 +892,22 @@ class HigherOrder:
     
     
     def compute_P_of_k(self, spectra_type, kind, term, density_kind=None):
+        '''
+        Computes the 3D power spectrum for the array of k values initialised in __init__()
+        
+        Parameters
+        ----------
+        spectra_type: type of higher order spectrum
+                      can be either "bispectrum" or "trispectrum"
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        term: halo model term
+              can be either "1h" for both "trispectrum" and "bispectrum",
+              "3h" for "bispectrum", or "4h" for "trispectrum"
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either "galaxy" or "electron"
+
+        '''
         P_of_k = np.array([self.compute_P(k, spectra_type, kind, term, density_kind) for k in self._k_arr])
         return P_of_k
     
