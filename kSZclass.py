@@ -7,7 +7,22 @@ from scipy.special import erf
 class kSZclass:
     
     def __init__(self, cosmo, k_arr, a_arr, pk_mm, pk_eg, pk_gm, pk_em, pk_ee, pk_gg):
-
+        '''
+        Class to calculate the 3D and angular power spectra for the kSZ effect
+        
+        Parameters
+        ----------
+        cosmo: pyccl cosmology object
+        k_arr: numpy array of wavenumbers
+        a_arr: numpy array of scale factors
+        pk_mm: matter-matter pk2d object
+        pk_eg: electron-galaxy pk2d object
+        pk_gm: galaxy-matter pk2d object
+        pk_em: electron-matter pk2d object
+        pk_ee: electron-electron pk2d object
+        pk_gg: galaxy-galaxy pk2d object
+        
+        '''
         self._cosmo = cosmo
         self._k_arr = k_arr
         self._a_arr = a_arr
@@ -26,7 +41,12 @@ class kSZclass:
 
          
     def P_perp_1(self, k, a, a_index, pk_ab):
+        '''
+        Calculates the pk_mm and pk_ab convolution for the perpendicular 
+        density-weighted peculiar velocity, q = (1+delta)v, mode
+        where a = {e,g} and b = {e,g}
         
+        '''
         aHf = self._aHf_arr[a_index]
         mu_vals = np.linspace(-0.99, 0.99, 128)
         lk_vals = np.log(np.logspace(-4, 1, 128))
@@ -48,7 +68,12 @@ class kSZclass:
     
 
     def P_perp_2(self, k, a, a_index, pk_am, pk_bm):
+        '''
+        Calculates the pk_am and pk_bm convolution for the perpendicular
+        density-weighted peculiar velocity, q = (1+delta)v, mode
+        where a = {e,g} and b = {e,g}
         
+        '''
         aHf = self._aHf_arr[a_index]
         mu_vals = np.linspace(-0.99, 0.99, 128)
         lk_vals = np.log(np.logspace(-4, 1, 128))
@@ -70,7 +95,12 @@ class kSZclass:
     
     
     def P_par_1(self, k, a, a_index, pk_ab):
+        '''
+        Calculates the pk_mm and pk_ab convolution for the parallel
+        density-weighted peculiar velocity, q = (1+delta)v, mode
+        where a = {e,g} and b = {e,g}
         
+        '''
         aHf = self._aHf_arr[a_index]
         mu_vals = np.linspace(-0.99, 0.99, 128)
         lk_vals = np.log(np.logspace(-4, 1, 128))
@@ -92,7 +122,12 @@ class kSZclass:
 
 
     def P_par_2(self, k, a, a_index, pk_am, pk_bm):
-        
+        '''
+        Calculates the pk_am and pk_bm convolution for the parallel
+        density-weighted peculiar velocity, q = (1+delta)v, mode
+        where a = {e,g} and b = {e,g}
+
+        '''
         aHf = self._aHf_arr[a_index]
         mu_vals = np.linspace(-0.99, 0.99, 128)
         lk_vals = np.log(np.logspace(-4, 1, 128))
@@ -114,7 +149,15 @@ class kSZclass:
     
     
     def _get_tracers(self, kind):
-        
+        '''
+        Computes the tracers for galaxies and the kSZ effect
+
+        Parameters
+        ----------
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+
+        '''
         xH = 0.76
         sigmaT_over_mp = 8.30883107e-17
         ne_times_mp = 0.5 * (1+xH) * self._cosmo['Omega_b'] * self._cosmo['h']**2 * ccl.physical_constants.RHO_CRITICAL
@@ -147,7 +190,23 @@ class kSZclass:
             
     
     def _get_pk2d(self, kind, ab):
-        
+        '''
+        Computes pk2d objects for the full array of k and a values
+        using the integrals P_perp_i or P_par_i where i = {1,2}
+
+        Parameters
+        ----------
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        ab: cross-correlation type
+            can be either 'eg', 'gg', or 'ee'
+
+        Returns
+        -------
+        pk1: 3D power spectrum from the pk_mm and pk_ab convolution
+        pk2: 3D power spectrum from the pk_am and pk_bm convolution
+
+        '''
         if kind == 'perp':
             P1 = self.P_perp_1
             P2 = self.P_perp_2
@@ -159,7 +218,7 @@ class kSZclass:
         else:
             raise ValueError(f"Unknown power spectrum type {kind}")
             
-        if ab == 'gk':
+        if ab == 'eg':
             pk_ab = self._pk_eg
             pk_am = self._pk_gm
             pk_bm = self._pk_em
@@ -168,7 +227,7 @@ class kSZclass:
             pk_ab = self._pk_gg
             pk_am = pk_bm = self._pk_gm
             
-        elif ab == 'kk':
+        elif ab == 'ee':
             pk_ab = self._pk_ee
             pk_am = pk_bm = self._pk_em
             
@@ -199,7 +258,26 @@ class kSZclass:
     
     
     def get_Cl(self, pk1, pk2, ells, kind, ab):
-        
+        '''
+        Calculates the angular power spectrum using the 3D power spectrum
+        from _get_pk2d() and the tracer objects from _get_tracers()
+
+        Parameters
+        ----------
+        pk1: 3D power spectrum from the pk_mm and pk_ab convolution
+        pk2: 3D power spectrum from the pk_am and pk_bm convolution
+        ells: array of angular multipoles
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        ab: cross-correlation type
+            can be either 'eg', 'gg', or 'ee'
+
+        Returns
+        -------
+        Cl1: angular power spectrum from the pk_mm and pk_ab convolution
+        Cl2: angular power spectrum from the pk_am and pk_bm convolution
+
+        '''        
         tg, tk = self._get_tracers(kind)
         
         if kind == 'perp':
@@ -213,14 +291,14 @@ class kSZclass:
         else:
             raise ValueError(f"Unknown power spectrum type {kind}")
             
-        if ab == 'gk':
+        if ab == 'eg':
             ta = tg
             tb = tk
             
         elif ab == 'gg':
             ta = tb = tg
             
-        elif ab == 'kk':
+        elif ab == 'ee':
             ta = tb = tk
             
         else:
@@ -233,7 +311,10 @@ class kSZclass:
     
     
     def get_Dl(self, ells, Cl):
-        
+        '''
+        Converts C_ells into D_ells
+
+        '''
         return ells * (ells + 1) * Cl / (2 * np.pi)
         
     
@@ -242,7 +323,19 @@ class kSZclass:
 class Satellites:
     
     def __init__(self, M, M0, M1, M_min, nM):
-
+        '''
+        Class to calculate the contribution from central and satellite galaxies
+        based on the HOD model from Zheng et al. 2005
+        
+        Parameters
+        ----------
+        M: halo mass
+        M0: minimum mass of haloes that can host satellite galaxies
+        M1: mass of haloes that on average contain one satellite galaxy
+        M_min: minimum mass of haloes that can host central galaxies
+        nM: halo mass function
+            
+        '''
         self._M = M
         self._M0 = M0
         self._M1 = M1
@@ -255,7 +348,7 @@ class Satellites:
         Returns the mean number of central galaxies
 
         '''
-        sig_lnM = 0.4
+        sig_lnM = 0.4 # Characteristic transition width
         return 0.5 * (1 + erf((np.log10(self._M / self._M_min)) / sig_lnM))
 
 
