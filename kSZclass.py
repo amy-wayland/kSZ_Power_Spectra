@@ -538,7 +538,7 @@ class HigherOrder:
         return B_tree * I1 * I2 * I3
     
     
-    def _P_tri(self, k_vec, tri_func, kind, nk=5, nmu=5, nphi=8):
+    def _P_tri(self, k_vec, tri_func, kind, nk=20, nmu=20, nphi=20):
         
         k_mag = np.linalg.norm(k_vec)
         if k_mag < 1e-5:
