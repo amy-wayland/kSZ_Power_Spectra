@@ -137,14 +137,21 @@ pkt_gk_1h = pkt_gk1_1h + pkt_gk2
 # Galaxy-kSZ cross-correlation (transverse) with satellites
 log10M = np.linspace(11, 15, 1000)
 M_vals = 10**log10M
-n_M = nM(cosmo, M, a)
-sat = ksz.Satellites(M_vals, M0=1e11, M1=3e12, M_min=1.6e11, nM=n_M)
-M_mean = sat.mean_halo_mass()
+n_M = nM(cosmo, M_vals, a)
+b_M = bM(cosmo, M_vals, a)
+sat = ksz.Satellites(M_vals, M0=1e11, M1=3e12, M_min=1.74e12, nM=n_M)
+M_mean_sat = sat.mean_halo_mass()
 
-pG_sat = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=np.log10(1.6e11), log10M0_0=np.log10(1e11), log10M1_0=np.log10(3e12), alpha_0=1.2)
+pG_sat = ccl.halos.HaloProfileHOD(mass_def=hmd_200m, concentration=cM, log10Mmin_0=np.log10(1.74e12), log10M0_0=np.log10(1e11), log10M1_0=np.log10(3e12), alpha_0=1.1)
 pk_eg_sat = ccl.halos.halomod_Pk2D(cosmo, hmc, pGas, prof2=pG_sat, lk_arr=lk_arr, a_arr=a_arr)
 pkt_gk1_sat = np.array([kSZ.P_perp_1(k, a, a_index, pk_eg_sat) for k in k_arr])
 pkt_gk_sat = pkt_gk1_sat + pkt_gk2
+
+# Compare M_mean to central only case using the HOD parameters from pG
+cen = ksz.Satellites(M_vals, M0=10**(12.92), M1=10**(13.95), M_min=10**(12.89), nM=n_M)
+M_mean_cen = cen.mean_halo_mass()
+print(f"{M_mean_cen:.2e}")
+print(f"{M_mean_sat:.2e}")
 
 #%%
 
@@ -170,6 +177,28 @@ plt.loglog()
 plt.legend(fontsize=12, frameon=False)
 plt.tick_params(which='both', direction='in', width=1, length=3)
 #plt.savefig('kSZ_power_spectrum_longitudinal.pdf', format="pdf", bbox_inches="tight")
+plt.show()
+
+plt.plot(k_arr, pkt_gk, label=r'1-halo + 2-halo', color='tab:red')
+plt.plot(k_arr, pkt_gk_1h, label=r'1-halo only', color='tab:purple', linestyle='--')
+plt.xlim(1e-3, 1e1)
+plt.xlabel(r'$k$', fontsize=20)
+plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=20)
+plt.loglog()
+plt.legend(fontsize=12, frameon=False)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+#plt.savefig('kSZ_power_spectrum_two_halo.pdf', format="pdf", bbox_inches="tight")
+plt.show()
+
+plt.plot(k_arr, pkt_gk, label=r'Central only', color='tab:red')
+plt.plot(k_arr, pkt_gk_sat, label=r'Central + satellites', color='tab:purple', linestyle='--')
+plt.xlim(1e-3, 1e1)
+plt.xlabel(r'$k$', fontsize=20)
+plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=20)
+plt.loglog()
+plt.legend(fontsize=12, frameon=False)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+#plt.savefig('kSZ_power_spectrum_satellites.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
@@ -263,7 +292,8 @@ var = ((Clt_gg_T + nl_gg) * (-Clt_kk_T + nl_TT_act) + Clt_gk_T**2) / ((2 * ells 
 
 #%%
 
-plt.errorbar(ells, Clt_gk_T, yerr=np.sqrt(var))
+plt.plot(ells, Clt_gk_T, color='tab:blue')
+plt.errorbar(ells, Clt_gk_T, yerr=np.sqrt(var), color='tab:blue', alpha=0.5)
 plt.xlim(2, 1e4)
 plt.loglog()
 plt.xlabel(r'$\ell$', fontsize=20)
@@ -277,19 +307,78 @@ plt.show()
 #%%
 
 def S_to_N(Cl1, Cl2, var):
-    return np.sqrt(np.sum((Cl1 - Cl2)**2 / var))
+    delta_ell = np.gradient(ells)
+    Cl1 = np.abs(Cl1)
+    Cl2 = np.abs(Cl2)
+    s2n = np.sqrt(np.sum(delta_ell * (Cl1 - Cl2)**2 / var))
+    return s2n
   
 # kSZ-only
 s2n_ksz = np.sqrt(np.sum(Clt_gk_T**2 / var))
+print('S/N kSZ =', s2n_ksz)
 
 # Sub-dominant contribution
-s2n_sd = S_to_N(Clt_gk[0], -Clt_gk[1], var)
+s2n_sd = S_to_N(Clt_gk[0], Clt_gk[1], var)
+print('S/N Perp_1 vs Perp_2 =', s2n_sd)
 
 # Longitudinal mode
-s2n_par = S_to_N(Clt_gk_T, -Clp_gk_T, var)
+s2n_par = S_to_N(Clt_gk_T, Clp_gk_T, var)
+print('S/N Perp vs Par =', s2n_par)
 
 # Two-halo term
 s2n_2h = S_to_N(Clt_gk[0], Clt_gk_1h[0], var)
+print('S/N 1h+2h vs 1h =', s2n_2h)
 
 # Satelite galaxies
 s2n_sat = S_to_N(Clt_gk[0], Clt_gk_sat[0], var)
+print('S/N cen+sat vs sat =', s2n_sat)
+
+#%%
+# Higher-order contributions
+
+#%%
+
+from scipy.interpolate import RectBivariateSpline
+
+# Define grids for M and k
+log10M_grid = np.linspace(11, 15, 128)
+M_grid = 10**log10M_grid
+k_grid = np.logspace(-3, 2, 128)
+log10k_grid = np.log10(k_grid)
+
+# Arrays for Fourier transforms
+u_pM_grid = np.zeros((len(k_grid), len(M_grid)))
+u_pG_grid = np.zeros((len(k_grid), len(M_grid)))
+u_pE_grid = np.zeros((len(k_grid), len(M_grid)))
+
+# Fill the grids
+for i, k_val in enumerate(k_grid):
+    for j, M_val in enumerate(M_grid):
+        u_pM_grid[i, j] = pM.fourier(cosmo, k_val, M_val, a) / M_val
+        u_pG_grid[i, j] = pG.fourier(cosmo, k_val, M_val, a) / pG.get_normalization(cosmo, a, hmc=hmc)
+        u_pE_grid[i, j] = pGas.fourier(cosmo, k_val, M_val, a)
+
+pM_interp = RectBivariateSpline(log10k_grid, log10M_grid, u_pM_grid)
+pG_interp = RectBivariateSpline(log10k_grid, log10M_grid, u_pG_grid)
+pE_interp = RectBivariateSpline(log10k_grid, log10M_grid, u_pE_grid)
+
+k_dense = np.logspace(-3, 1, 1000)
+P_dense = ccl.linear_matter_power(cosmo, k_dense, a)
+P_L_interp = interp1d(k_dense, P_dense, bounds_error=False, fill_value=0.0)
+
+#%%
+
+test_k = 1e-2
+
+ho = ksz.HigherOrder(cosmo, k_arr, a, M_vals, n_M, b_M, pM_interp, pG_interp, pE_interp, P_L_interp) 
+
+Pt_tri_4h = ho.compute_P(test_k, spectra_type="trispectrum", kind="perp", term="4h") 
+
+Pp_tri_1h = ho.compute_P(test_k, spectra_type="trispectrum", kind="par", term="1h") 
+Pp_tri_4h = ho.compute_P(test_k, spectra_type="trispectrum", kind="par", term="4h") 
+
+Pp_bi_1h_g = ho.compute_P(test_k, spectra_type="bispectrum", kind="par", term="1h", density_kind='galaxy') 
+Pp_bi_3h_g = ho.compute_P(test_k, spectra_type="bispectrum", kind="par", term="3h", density_kind='galaxy')
+
+Pp_bi_1h_e = ho.compute_P(test_k, spectra_type="bispectrum", kind="par", term="1h", density_kind='electron') 
+Pp_bi_3h_e = ho.compute_P(test_k, spectra_type="bispectrum", kind="par", term="3h", density_kind='electron')
