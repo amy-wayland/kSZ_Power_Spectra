@@ -319,8 +319,6 @@ pk_tri = ccl.Pk2D(a_arr=a_arr, lk_arr=np.log(k_arr), pk_arr=pk_tri_arr, is_logp=
 Clt_tri_4h = prefac * ccl.angular_cl(cosmo, tg, tk, ells, p_of_k_a=pk_tri)
 
 plt.plot(ells, kSZ.get_Dl(ells, Clt_gk[0]), color="tab:blue", label=r'$D_{\ell, \perp, 1}$')
-plt.plot(ells, kSZ.get_Dl(ells, Clt_gk_1h[0]), color="tab:blue", label=r'$D_{\ell, \perp, 1}^{\rm (1h)}$', linestyle='dashed')
-plt.plot(ells, kSZ.get_Dl(ells, Clt_gk_2h[0]), color="tab:blue", label=r'$D_{\ell, \perp, 1}^{\rm (2h)}$', linestyle='dotted')
 plt.plot(ells, kSZ.get_Dl(ells, -Clt_gk[1]), color="tab:cyan", label=r'$-D_{\ell, \perp, 2}$')
 plt.plot(ells, kSZ.get_Dl(ells, Clt_tri_4h), color="tab:purple", label=r'$D_{\ell, \perp, \rm c}$')
 plt.plot(ells, kSZ.get_Dl(ells, Clt_gk[0]+Clt_gk[1]), color="tab:red", label=r'$D_{\ell, \perp, \rm tot}$')
@@ -358,13 +356,26 @@ D_ells_act = d["tt", "dr6_pa5_f090", "dr6_pa5_f090"]
 C_ells_act = 2 * np.pi * D_ells_act / (ells_act * (ells_act+1) * T_CMB_uK**2)
 nl_TT_act = interp1d(ells_act, C_ells_act, bounds_error=False, fill_value=0)(ells)
 
-# CMB noise
+# SO CMB noise
 d = np.loadtxt("data/SO_LAT_Nell_T_atmv1_baseline_fsky0p4_ILC_CMB.txt", unpack=True)
 ells_n = d[0]
-C_ells_n = d[1]
-C_ells_n /= T_CMB_uK**2
-nl_TT_cmb += interp1d(ells_n, C_ells_n, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
-nl_TT_act += interp1d(ells_n, C_ells_n, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+nl_so = d[1]
+nl_so /= T_CMB_uK**2
+#nl_TT_cmb += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+#nl_TT_act += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+
+# S4 CMB noise
+lknee = 2154
+aknee = -3.5 # Atmospheric noise
+DT = 2.0 # Noise rms: 2 uK-arcmin
+fwhm = 1.4 # Beam FWHM
+beam = np.exp(-0.5*ells_n*(ells_n+1)*(np.radians(fwhm/60)/2.355)**2)
+Nwhite = DT**2*(np.pi/180/60)**2 # White amplitude in uK^2 srad
+nl_s4 = Nwhite * (1 + (ells_n/lknee)**aknee)/beam**2
+nl_s4 /= T_CMB_uK**2
+nl_s4 = 1/(1/nl_s4+1/nl_so)
+#nl_TT_cmb += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+#nl_TT_act += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
 
 #%%
 
