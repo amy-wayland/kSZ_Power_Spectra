@@ -6,7 +6,7 @@ from scipy.special import erf
 
 class kSZclass:
     
-    def __init__(self, cosmo, k_arr, a_arr, pk_mm, pk_eg, pk_gm, pk_em, pk_ee, pk_gg):
+    def __init__(self, cosmo, k_arr, a_arr, pk_dict):
         '''
         Class to calculate the 3D and angular power spectra for the kSZ effect
         
@@ -15,24 +15,14 @@ class kSZclass:
         cosmo: pyccl cosmology object
         k_arr: numpy array of wavenumbers
         a_arr: numpy array of scale factors
-        pk_mm: matter-matter pk2d object
-        pk_eg: electron-galaxy pk2d object
-        pk_gm: galaxy-matter pk2d object
-        pk_em: electron-matter pk2d object
-        pk_ee: electron-electron pk2d object
-        pk_gg: galaxy-galaxy pk2d object
+        pk_dict: dictionary containing pk2d objects e.g. pk_mm, pk_eg, etc
         
         '''
         self._cosmo = cosmo
         self._k_arr = k_arr
         self._a_arr = a_arr
-        self._pk_mm = pk_mm
-        self._pk_eg = pk_eg
-        self._pk_gm = pk_gm
-        self._pk_em = pk_em
-        self._pk_ee = pk_ee
-        self._pk_gg = pk_gg
-
+        self._pk_dict = pk_dict
+        
         self._lk_arr = np.log(self._k_arr)
         self._z_arr = (1/self._a_arr) - 1
         self._H_arr = self._cosmo['h'] * ccl.h_over_h0(self._cosmo, self._a_arr) / ccl.physical_constants.CLIGHT_HMPC
@@ -40,7 +30,7 @@ class kSZclass:
         self._aHf_arr = self._a_arr * self._H_arr * self._f_arr
 
          
-    def P_perp_1(self, k, a, a_index, pk_ab):
+    def P_perp_1(self, k, a, a_index, pk_mm, pk_ab):
         '''
         Calculates the pk_mm and pk_ab convolution for the perpendicular 
         density-weighted peculiar velocity, q = (1+delta)v, mode
@@ -59,7 +49,7 @@ class kSZclass:
             kp = np.exp(lkp)
             integrand = integrand2(mu_vals, kp)
             integral = np.trapz(integrand, mu_vals)
-            return kp * integral * self._pk_mm(kp, a, self._cosmo)
+            return kp * integral * pk_mm(kp, a, self._cosmo)
 
         integrand = np.array([integrand1(lk) for lk in lk_vals])
         integral = np.trapz(integrand, lk_vals)
@@ -94,7 +84,7 @@ class kSZclass:
         return integral * aHf**2 / (2*np.pi)**2
     
     
-    def P_par_1(self, k, a, a_index, pk_ab):
+    def P_par_1(self, k, a, a_index, pk_mm, pk_ab):
         '''
         Calculates the pk_mm and pk_ab convolution for the parallel
         density-weighted peculiar velocity, q = (1+delta)v, mode
@@ -113,7 +103,7 @@ class kSZclass:
             kp = np.exp(lkp)
             integrand = integrand2(mu_vals, kp)
             integral = np.trapz(integrand, mu_vals)
-            return kp * integral * self._pk_mm(kp, a)
+            return kp * integral * pk_mm(kp, a)
 
         integrand = np.array([integrand1(lk) for lk in lk_vals])
         integral = np.trapz(integrand, lk_vals)
@@ -189,7 +179,7 @@ class kSZclass:
         return tg, tk
             
     
-    def _get_pk2d(self, kind, ab):
+    def _get_pk2d(self, kind, ab, variant='full'):
         '''
         Computes pk2d objects for the full array of k and a values
         using the integrals P_perp_i or P_par_i where i = {1,2}
@@ -200,6 +190,7 @@ class kSZclass:
               can be either "perp" or "par"
         ab: cross-correlation type
             can be either 'eg', 'gg', or 'ee'
+        variant: can be either 'full', '1h', '2h', or 'sat'
 
         Returns
         -------
@@ -219,17 +210,17 @@ class kSZclass:
             raise ValueError(f"Unknown power spectrum type {kind}")
             
         if ab == 'eg':
-            pk_ab = self._pk_eg
-            pk_am = self._pk_gm
-            pk_bm = self._pk_em
+            pk_ab = self._pk_dict['eg'][variant]
+            pk_am = self._pk_dict['gm']['full']
+            pk_bm = self._pk_dict['em']['full']
         
         elif ab == 'gg':
-            pk_ab = self._pk_gg
-            pk_am = pk_bm = self._pk_gm
+            pk_ab = self._pk_dict['gg']['full']
+            pk_am = pk_bm = self._pk_dict['gm']['full']
             
         elif ab == 'ee':
-            pk_ab = self._pk_ee
-            pk_am = pk_bm = self._pk_em
+            pk_ab = self._pk_dict['ee']['full']
+            pk_am = pk_bm = self._pk_dict['em']['full']
             
         else:
             raise ValueError(f"Unknown cross-correlation type {ab}")
@@ -237,8 +228,10 @@ class kSZclass:
         pk1 = np.zeros((len(self._k_arr), len(self._a_arr)))
         pk2 = np.zeros((len(self._k_arr), len(self._a_arr)))
         
+        pk_mm = self._pk_dict['mm']['full']
+        
         for i, a in enumerate(self._a_arr):
-            p1 = np.array([P1(k, a, i, pk_ab) for k in self._k_arr])
+            p1 = np.array([P1(k, a, i, pk_mm, pk_ab) for k in self._k_arr])
             p2 = np.array([P2(k, a, i, pk_am, pk_bm) for k in self._k_arr])
             pk1[:, i] = p1
             pk2[:, i] = p2
@@ -257,7 +250,7 @@ class kSZclass:
         return pk1, pk2
     
     
-    def get_Cl(self, pk1, pk2, ells, kind, ab):
+    def get_Cl(self, ells, kind, ab, variant='full'):
         '''
         Calculates the angular power spectrum using the 3D power spectrum
         from _get_pk2d() and the tracer objects from _get_tracers()
@@ -271,6 +264,7 @@ class kSZclass:
               can be either "perp" or "par"
         ab: cross-correlation type
             can be either 'eg', 'gg', or 'ee'
+        variant: can be either 'full', '1h', '2h', or 'sat'
 
         Returns
         -------
@@ -279,27 +273,25 @@ class kSZclass:
 
         '''        
         tg, tk = self._get_tracers(kind)
+        pk1, pk2 = self._get_pk2d(kind, ab, variant)
         
         if kind == 'perp':
-            pk1, pk2 = self._get_pk2d(kind, ab)
             prefac = ells * (ells+1) / (ells+0.5)**2
         
         elif kind == 'par':
-            pk1, pk2 = self._get_pk2d(kind, ab)
             prefac = 1.0
           
         else:
             raise ValueError(f"Unknown power spectrum type {kind}")
             
         if ab == 'eg':
-            ta = tg
-            tb = tk
+            ta, tb = tg, tk
             
         elif ab == 'gg':
-            ta = tb = tg
+            ta, tb = tg, tg
             
         elif ab == 'ee':
-            ta = tb = tk
+            ta, tb = tk, tk
             
         else:
             raise ValueError(f"Unknown cross-correlation type {ab}")
