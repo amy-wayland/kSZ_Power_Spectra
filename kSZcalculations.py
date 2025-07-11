@@ -361,8 +361,8 @@ d = np.loadtxt("data/SO_LAT_Nell_T_atmv1_baseline_fsky0p4_ILC_CMB.txt", unpack=T
 ells_n = d[0]
 nl_so = d[1]
 nl_so /= T_CMB_uK**2
-#nl_TT_cmb += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
-#nl_TT_act += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+#nl_TT_cmb += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(nl_so[0], nl_so[-1]))(ells)
+#nl_TT_act += interp1d(ells_n, nl_so, bounds_error=False, fill_value=(nl_so[0], nl_so[-1]))(ells)
 
 # S4 CMB noise
 lknee = 2154
@@ -374,8 +374,8 @@ Nwhite = DT**2*(np.pi/180/60)**2 # White amplitude in uK^2 srad
 nl_s4 = Nwhite * (1 + (ells_n/lknee)**aknee)/beam**2
 nl_s4 /= T_CMB_uK**2
 nl_s4 = 1/(1/nl_s4+1/nl_so)
-#nl_TT_cmb += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
-#nl_TT_act += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(C_ells_n[0], C_ells_n[-1]))(ells)
+#nl_TT_cmb += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(nl_s4[0], nl_s4[-1]))(ells)
+#nl_TT_act += interp1d(ells_n, nl_s4, bounds_error=False, fill_value=(nl_s4[0], nl_s4[-1]))(ells)
 
 #%%
 
