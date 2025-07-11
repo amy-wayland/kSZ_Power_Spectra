@@ -209,6 +209,17 @@ plt.tick_params(which='both', direction='in', width=1, length=3)
 #plt.savefig('kSZ_power_spectrum_longitudinal.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
+plt.plot(k_arr, pkt_gk1, label=r'$P_{q_\perp,1}^{\rm (cen \, only)}$', color='tab:blue')
+plt.plot(k_arr, pkt_gk1_sat, label=r'$P_{q_\perp,1}^{\rm (cen+sats)}$', color='tab:blue', linestyle='dashed')
+plt.xlim(1e-3, 1e1)
+plt.xlabel(r'$k$', fontsize=20)
+plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=20)
+plt.loglog()
+plt.legend(fontsize=14, frameon=False, ncol=1, loc="best")
+plt.tick_params(which='both', direction='in', width=1, length=3)
+#plt.savefig('kSZ_power_spectrum_transverse_satellites.pdf', format="pdf", bbox_inches="tight")
+plt.show()
+
 #%%
 # Calculate angular power spectra
 
@@ -283,6 +294,17 @@ plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=20
 plt.tick_params(which='both', direction='in', width=1, length=3)
 plt.legend(fontsize=14, frameon=False, loc="best", ncol=1)
 #plt.savefig('kSZ_angular_power_spectra_longitudinal.pdf',  format="pdf", bbox_inches="tight")
+plt.show()
+
+plt.plot(ells, kSZ.get_Dl(ells, Clt_gk[0]), color="tab:blue", label=r'$D_{\ell, \perp, 1}^{\rm (cen \, only)}$')
+plt.plot(ells, kSZ.get_Dl(ells, Clt_gk_sat[0]), color="tab:blue", label=r'$D_{\ell, \perp, 1}^{\rm (cen+sats)}$', linestyle='dashed')
+plt.xlim(2, 1e4)
+plt.loglog()
+plt.xlabel(r'$\ell$', fontsize=20)
+plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=20)
+plt.tick_params(which='both', direction='in', width=1, length=3)
+plt.legend(fontsize=14, frameon=False, loc="best", ncol=1)
+#plt.savefig('kSZ_angular_power_spectra_transverse_satellites.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
