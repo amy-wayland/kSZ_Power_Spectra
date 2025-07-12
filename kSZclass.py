@@ -276,7 +276,7 @@ class kSZclass:
         pk1, pk2 = self._get_pk2d(kind, ab, variant)
         
         if kind == 'perp':
-            prefac = ells * (ells+1) / (ells+0.5)**2
+            prefac = 0.5 * ells * (ells+1) / (ells+0.5)**2
         
         elif kind == 'par':
             prefac = 1.0
