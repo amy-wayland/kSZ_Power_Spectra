@@ -2084,7 +2084,6 @@ class HaloProfileDensityHE_withFT(ccl.halos.HaloProfile):
 
     def __init__(self, *, mass_def, concentration,
                  lMc=14.0, beta=0.6, gamma=1.17,
-                 gamma_T=1.0,
                  A_star=0.03, sigma_star=1.2,
                  eta_b=0.5,
                  kind="rho_gas",
@@ -2238,3 +2237,4 @@ class HaloProfileDensityHE_withFT(ccl.halos.HaloProfile):
             return (fb + fe) * M * self.prefac_rho / a**3
         
         return hmc.integrate_over_massfunc(rho_gas_integrand, cosmo, a)
+    
