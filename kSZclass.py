@@ -138,45 +138,34 @@ class kSZclass:
         return integral * aHf**2 / (2*np.pi)**2
     
     
-    def _get_tracers(self, kind):
+    def get_pk_OV(self):
         '''
-        Computes the tracers for galaxies and the kSZ effect
-
-        Parameters
-        ----------
-        kind: kind of density-weighted peculiar velocity mode
-              can be either "perp" or "par"
+        Computes the Ostriker-Vishnia (OV) 3D power spectrum
 
         '''
-        xH = 0.76
-        sigmaT_over_mp = 8.30883107e-17
-        ne_times_mp = 0.5 * (1+xH) * self._cosmo['Omega_b'] * self._cosmo['h']**2 * ccl.physical_constants.RHO_CRITICAL
-        sigmaTne = ne_times_mp * sigmaT_over_mp
-
-        nz = np.exp(-0.5 * ((self._z_arr - 0.55) / 0.05)**2) 
-        
-        sort_idx = np.argsort(self._z_arr)
-        self._z_arr = self._z_arr[sort_idx]
-        nz = nz[sort_idx]
-
-        kernel_g = ccl.get_density_kernel(self._cosmo, dndz=(self._z_arr, nz))
-        chis = ccl.comoving_radial_distance(self._cosmo, 1/(1+self._z_arr))
-        
-        tg = ccl.Tracer()
-        tk = ccl.Tracer()
-        
-        if kind == 'perp': 
-            tg.add_tracer(self._cosmo, kernel=kernel_g)
-            tk.add_tracer(self._cosmo, kernel=(chis, sigmaTne/self._a_arr**2))
+        pk_mm = self._pk_dict['mm']['full']
             
-        elif kind == 'par':
-            tg.add_tracer(self._cosmo, kernel=kernel_g, der_bessel=1)
-            tk.add_tracer(self._cosmo, kernel=(chis, sigmaTne/self._a_arr**2), der_bessel=1)
+        pk1 = np.zeros((len(self._k_arr), len(self._a_arr)))
+        pk2 = np.zeros((len(self._k_arr), len(self._a_arr)))
         
-        else:
-            raise ValueError(f"Unknown power spectrum type {kind}")
-            
-        return tg, tk
+        for i, a in enumerate(self._a_arr):
+            p1 = np.array([self.P_perp_1(k, a, i, pk_mm, pk_mm) for k in self._k_arr])
+            p2 = np.array([self.P_perp_2(k, a, i, pk_mm, pk_mm) for k in self._k_arr])
+            pk1[:, i] = p1
+            pk2[:, i] = p2
+        
+        sort_idx = np.argsort(self._a_arr)
+        self._a_arr = self._a_arr[sort_idx]
+        self._H_arr = self._H_arr[sort_idx]
+        self._f_arr = self._f_arr[sort_idx]
+        
+        pk1 = pk1[:, sort_idx]
+        pk2 = pk2[:, sort_idx]
+        
+        pk1 = ccl.Pk2D(a_arr=self._a_arr, lk_arr=np.log(self._k_arr), pk_arr=pk1.T, is_logp=False)
+        pk2 = ccl.Pk2D(a_arr=self._a_arr, lk_arr=np.log(self._k_arr), pk_arr=pk2.T, is_logp=False)
+        
+        return pk1 - pk2
             
     
     def _get_pk2d(self, kind, ab, variant='full'):
@@ -250,6 +239,47 @@ class kSZclass:
         return pk1, pk2
     
     
+    def _get_tracers(self, kind):
+        '''
+        Computes the tracers for galaxies and the kSZ effect
+
+        Parameters
+        ----------
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+
+        '''
+        xH = 0.76
+        sigmaT_over_mp = 8.30883107e-17
+        ne_times_mp = 0.5 * (1+xH) * self._cosmo['Omega_b'] * self._cosmo['h']**2 * ccl.physical_constants.RHO_CRITICAL
+        sigmaTne = ne_times_mp * sigmaT_over_mp
+
+        nz = np.exp(-0.5 * ((self._z_arr - 0.55) / 0.05)**2) 
+        
+        sort_idx = np.argsort(self._z_arr)
+        self._z_arr = self._z_arr[sort_idx]
+        nz = nz[sort_idx]
+
+        kernel_g = ccl.get_density_kernel(self._cosmo, dndz=(self._z_arr, nz))
+        chis = ccl.comoving_radial_distance(self._cosmo, 1/(1+self._z_arr))
+        
+        tg = ccl.Tracer()
+        tk = ccl.Tracer()
+        
+        if kind == 'perp': 
+            tg.add_tracer(self._cosmo, kernel=kernel_g)
+            tk.add_tracer(self._cosmo, kernel=(chis, sigmaTne/self._a_arr**2))
+            
+        elif kind == 'par':
+            tg.add_tracer(self._cosmo, kernel=kernel_g, der_bessel=1)
+            tk.add_tracer(self._cosmo, kernel=(chis, sigmaTne/self._a_arr**2), der_bessel=1)
+        
+        else:
+            raise ValueError(f"Unknown power spectrum type {kind}")
+            
+        return tg, tk
+    
+    
     def get_Cl(self, ells, kind, ab, variant='full'):
         '''
         Calculates the angular power spectrum using the 3D power spectrum
@@ -308,7 +338,19 @@ class kSZclass:
 
         '''
         return ells * (ells + 1) * Cl / (2 * np.pi)
-        
+    
+    
+    def get_Cl_OV(self, ells):
+        '''
+        Computes the Ostriker-Vishnia (OV) angular power spectrum
+
+        '''
+        tg, tk = self._get_tracer(kind="perp")
+        pk = self.get_pk_OV()
+        prefac = 0.5 * ells * (ells+1) / (ells+0.5)**2
+        Cl = prefac * ccl.angular_cl(self._cosmo, tg, tk, ells, p_of_k_a=pk)
+        return Cl
+    
     
 #%%
         
@@ -368,7 +410,7 @@ class Satellites:
 
 class HigherOrder:
     
-    def __init__(self, cosmo, k_arr, a, M_vals, nM_vals, bM_vals, interp_pM, interp_pG, interp_pE, interp_P_L):
+    def __init__(self, cosmo, k_arr, a_arr, M_vals, nM_vals, bM_vals, interp_pM, interp_pG, interp_pE, interp_P_L):
         '''
         Class to calculate the higher order power spectra for the kSZ effect
         
@@ -376,7 +418,7 @@ class HigherOrder:
         ----------
         cosmo: pyccl cosmology object
         k_arr: numpy array of wavenumbers
-        a: scale factor value
+        a_arr: numpy array of scale factors
         M_vals: array of halo masses in units of solar masses
         nM_vals: halo mass function array computed for M_vals
         bM_vals: halo bias array computed for M_vals
@@ -388,7 +430,7 @@ class HigherOrder:
         '''
         self._cosmo = cosmo
         self._k_arr = k_arr
-        self._a = a
+        self._a_arr = a_arr
         self._M_vals = M_vals
         self._nM_vals = nM_vals
         self._bM_vals = bM_vals
@@ -397,9 +439,10 @@ class HigherOrder:
         self._interp_pE = interp_pE
         self._interp_P_L = interp_P_L
         
-        self._H = cosmo['h'] * ccl.h_over_h0(self._cosmo, self._a) / ccl.physical_constants.CLIGHT_HMPC
-        self._f = cosmo.growth_rate(self._a)
-        self._aHf = self._a * self._H * self._f
+        self._lk_arr = np.log(self._k_arr)
+        self._H_arr = cosmo['h'] * ccl.h_over_h0(self._cosmo, self._a_arr) / ccl.physical_constants.CLIGHT_HMPC
+        self._f_arr = cosmo.growth_rate(self._a_arr)
+        self._aHf_arr = self._a_arr * self._H_arr * self._f_arr
         self._log10M = np.log10(self._M_vals)
     
     
@@ -745,9 +788,7 @@ class HigherOrder:
         dmu = 2 / nmu
         dphi = (2*np.pi) / nphi
 
-        prefact = self._aHf**2 / (2*np.pi)**5
         result = 0.0
-        
         for i, kp in enumerate(kps):
             for j, kpp in enumerate(kpps):
                 for l, mu1 in enumerate(mu_primes):
@@ -777,7 +818,7 @@ class HigherOrder:
                         
                         result += block_sum
 
-        return prefact * result
+        return result / (2*np.pi)**5
     
     
     def _P_bi(self, k_vec, bi_func, kind, density_kind, nk=20, nmu=20, nphi=20):
@@ -816,10 +857,8 @@ class HigherOrder:
         dlk = (lk_max - lk_min) / (nk - 1)
         dmu = 2 / nmu
         dphi = (2*np.pi) / nphi
-
-        prefact = self._aHf**2 / (2*np.pi)**3
+        
         result = 0.0
-
         for i, kp in enumerate(kps):
             for m, mu in enumerate(mu_primes):
                 sin_theta = sin_thetas[m]
@@ -838,7 +877,7 @@ class HigherOrder:
                 
                 result += block_sum
 
-        return prefact * result
+        return result / (2*np.pi)**3
         
     
     def compute_P(self, k, spectra_type, kind, term, density_kind=None):
@@ -883,9 +922,33 @@ class HigherOrder:
         return P
     
     
-    def compute_P_of_k(self, spectra_type, kind, term, density_kind=None):
+    def compute_P_of_k(self, a, a_index, spectra_type, kind, term, density_kind=None):
         '''
         Computes the 3D power spectrum for the array of k values initialised in __init__()
+        
+        Parameters
+        ----------
+        a: scale factor value
+        a_index: scale factor index from a_arr
+        spectra_type: type of higher order spectrum
+                      can be either "bispectrum" or "trispectrum"
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        term: halo model term
+              can be either "1h" for both "trispectrum" and "bispectrum",
+              "3h" for "bispectrum", or "4h" for "trispectrum"
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either "galaxy" or "electron"
+
+        '''
+        aHf = self._aHf_arr[a_index]
+        P_of_k = np.array([self.compute_P(k, spectra_type, kind, term, density_kind) * aHf**2 for k in self._k_arr])
+        return P_of_k
+    
+    
+    def compute_P_of_k_a(self, spectra_type, kind, term, density_kind=None):
+        '''
+        Returns a Pk2D array of the 3D angular power spectrum across different k and a values
         
         Parameters
         ----------
@@ -901,5 +964,43 @@ class HigherOrder:
 
         '''
         P_of_k = np.array([self.compute_P(k, spectra_type, kind, term, density_kind) for k in self._k_arr])
-        return P_of_k
+        P_of_k_a = P_of_k.reshape(len(self._k_arr), 1) * self._aHf_arr.reshape(1, len(self._a_arr))
+        pk2d = ccl.Pk2D(a_arr=self._a_arr, lk_arr=self._lk_arr, pk_arr=P_of_k_a.T, is_logp=False)
+        return pk2d
     
+    
+    def compute_Cl(self, ells, ksz_instance, spectra_type, kind, term, density_kind=None):
+        '''
+        Returns the angular power spectrum for the higher order term under consideration
+        
+        Parameters
+        ----------
+        ells: array of angular multipoles
+        ksz_instance: an instance of kSZclass
+        spectra_type: type of higher order spectrum
+                      can be either "bispectrum" or "trispectrum"
+        kind: kind of density-weighted peculiar velocity mode
+              can be either "perp" or "par"
+        term: halo model term
+              can be either "1h" for both "trispectrum" and "bispectrum",
+              "3h" for "bispectrum", or "4h" for "trispectrum"
+        density_kind: cross-correlation type B_{mma} where a = {e,g}
+                      can be either "galaxy" or "electron"
+
+        '''
+        
+        pk2d = self.compute_P_of_k_a(spectra_type, kind, term, density_kind)
+        tg, tk = ksz_instance._get_tracers(kind)
+        
+        if kind == 'perp':
+            prefac = 0.5 * ells * (ells+1) / (ells+0.5)**2
+        
+        elif kind == 'par':
+            prefac = 1.0
+          
+        else:
+            raise ValueError(f"Unknown power spectrum type {kind}")
+            
+        Cl = prefac * ccl.angular_cl(self._cosmo, tg, tk, ells, p_of_k_a=pk2d)
+        return Cl
+        
