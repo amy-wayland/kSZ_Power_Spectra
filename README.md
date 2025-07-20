@@ -1,9 +1,11 @@
 # kSZ_Power_Spectra
 
-data : folder containing CMB and ACT data
+data : folder containing CMB and ACT data, and the redshift distributions from Zhou+ 2021
 
 HaloProfiles.py : class containing code to calculate the electron density profile from La Posta+ 2024
 
-kSZclass.py : class containing code to calculate the 3D and angular power spectra and higher order terms
+kSZ_extra_results.py : investigates the impact of baryonic effects, baryon model choice, and velocity reconstruction
 
-kSZcalculations.py : calculates the 3D and angular power spectra and higher order terms using kSZclass.py
+kSZ_higher_order.py : computes the contributions from higher order statistics
+
+kSZ_power_spectra.py : 3D and angular power spectra calculations
