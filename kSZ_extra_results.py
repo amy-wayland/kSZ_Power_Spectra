@@ -157,7 +157,7 @@ M = 10**log10M
 plt.rcParams.update({
     "mathtext.fontset": "stix",
     "font.family": "serif",
-    "font.size": 14})
+    "font.size": 16})
 
 #%%
 # Halo model implementation
@@ -226,6 +226,9 @@ clt1 = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt1)
 clt2 = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt2)
 clt = clt1 + clt2
 
+def get_Dl(ells, Cl):
+    return ells*(ells+1)*Cl/(2*np.pi)
+
 #%%
 # Vary baryonic effects
 
@@ -257,9 +260,6 @@ pkt_lMc = pkt1_lMc + pkt2_lMc
 clt_eta = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt1_eta+pkt2_eta)
 clt_lMc = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt1_lMc+pkt2_lMc)
 
-def get_Dl(ells, Cl):
-    return ells*(ells+1)*Cl/(2*np.pi)
-
 #%%
 
 plt.figure(figsize=(8, 6))
@@ -267,10 +267,10 @@ plt.plot(ells, get_Dl(ells, clt), label=r'$\log_{10} M_{\rm c} = 14.0$, $\eta_{\
 plt.plot(ells, get_Dl(ells, clt_eta), label=r'$\log_{10} M_{\rm c} = 14.0$, $\eta_{\rm b} = 0.1$', color='mediumblue', linewidth=2)
 plt.plot(ells, get_Dl(ells, clt_lMc), label=r'$\log_{10} M_{\rm c} = 12.0$, $\eta_{\rm b} = 0.5$', color='deepskyblue', linewidth=2)
 plt.xlim(2, 1e4)
-plt.xlabel(r'$\ell$', fontsize=24)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=24)
+plt.xlabel(r'$\ell$', fontsize=28)
+plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
 plt.loglog()
-plt.legend(fontsize=18, frameon=False, ncol=1, loc="lower right")
+plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_angular_power_spectrum_baryonic_effects.pdf', format="pdf", bbox_inches="tight")
 plt.show()
@@ -289,11 +289,15 @@ plt.plot(k_arr, pk_eg(k_arr, 1/(1+0.55)), label=r'HE profile', color='crimson', 
 plt.plot(k_arr, pk_eg_bat(k_arr, 1/(1+0.55)), label=r'Battaglia profile', color='mediumblue', linewidth=2)
 plt.loglog()
 plt.xlim(1e-3, 1e1)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=24)
-plt.ylabel(r'$P_{\rm eg}(k)$', fontsize=24)
-plt.legend(fontsize=18, frameon=False, ncol=1, loc="lower left")
+plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
+plt.ylabel(r'$P_{\rm eg}(k)$', fontsize=28)
+plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower left")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 plt.show()
+
+#%%
+
+bias_bat = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pE_bat)
 
 #%%
 
@@ -313,10 +317,10 @@ plt.figure(figsize=(8, 6))
 plt.plot(ells, get_Dl(ells, clt), label=r'HE profile', color='crimson', linewidth=2)
 plt.plot(ells, get_Dl(ells, clt_bat), label=r'Battaglia profile', color='mediumblue', linewidth=2)
 plt.xlim(2, 1e4)
-plt.xlabel(r'$\ell$', fontsize=24)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=24)
+plt.xlabel(r'$\ell$', fontsize=28)
+plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
 plt.loglog()
-plt.legend(fontsize=18, frameon=False, ncol=1, loc="lower right")
+plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_angular_power_spectrum_baryon_model.pdf', format="pdf", bbox_inches="tight")
 plt.show()
@@ -326,7 +330,7 @@ plt.show()
 
 #%%
 
-bg = 2.0
+bg = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pG)
 pk_mm_bg = pk_gm / bg
 pk_em_bg = pk_eg / bg
 
@@ -338,18 +342,18 @@ pk_dict_bg = {'mm': {'full': pk_mm_bg},
 pkt1_bg, pkt2_bg = get_pk2d(cosmo, k_arr, a_arr, pk_dict_bg, kind="perp")
 pkt_bg = pkt1_bg + pkt2_bg
 
-clt_bg = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt1_bg+pkt2_bg)
+clt_bg = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pkt_bg)
 
 #%%
 
 plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, clt), label=r'without galaxy bias', color='deepskyblue', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt_bg), label=r'with galaxy bias', color='mediumblue', linewidth=2, linestyle='dashed')
+plt.plot(ells, get_Dl(ells, clt), label=r'$P_{\rm mm}$', color='deepskyblue', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt_bg), label=r'$P_{\rm mm} = P_{\rm gm} \, / \, b_{\rm g}$' + '\n' + r'$P_{\rm em} \,\, = P_{\rm eg} \, / \, b_{\rm g}$', color='mediumblue', linewidth=2, linestyle='dashed')
 plt.xlim(2, 1e4)
-plt.xlabel(r'$\ell$', fontsize=24)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=24)
+plt.xlabel(r'$\ell$', fontsize=28)
+plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
 plt.loglog()
-plt.legend(fontsize=16, frameon=False, ncol=1, loc="lower right")
+plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_angular_power_spectrum_galaxy_bias.pdf', format="pdf", bbox_inches="tight")
 plt.show()
@@ -409,7 +413,7 @@ print('S/N kSZ =', f"{sn_ksz:.4}")
 
 #%%
 
-f_rec = 1.0 # Vary to investigate the impact on S/N
+f_rec = 4.5 # Vary to investigate the impact on S/N
 nl_gg_rec = nl_gg * f_rec
 
 var_rec = ((clt_gg+nl_gg_rec) * (clt_kk+nl_kk_irr+nl_kk_so) + (clt1+clt2)**2) / ((2*ells+1) * f_sky * np.gradient(ells))
@@ -419,13 +423,15 @@ print('S/N kSZ =', f"{sn_ksz:.4}")
 
 #%%
 
-f_recs = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 15.0, 20.0, 25.0])
-SN_vals = np.array([34.23, 24.34, 19.91, 17.26, 15.44, 14.10, 13.06, 12.22, 11.52, 10.93, 8.93, 7.774, 6.92])
+f_recs = np.array([1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+SN_vals = np.array([34.23, 30.69, 28.05, 26.00, 24.34, 21.79, 19.91, 18.44, 17.26, 16.28, 15.44])
 
 plt.figure(figsize=(8, 6))
 plt.plot(f_recs, SN_vals, color='mediumblue', linewidth=3)
-plt.xlabel(r'$f_{\rm rec}$', fontsize=24)
-plt.ylabel(r'$S/N$', fontsize=24)
+plt.xlabel(r'$f_{\rm rec}$', fontsize=28)
+plt.ylabel(r'$S/N$', fontsize=28)
+plt.xticks([1.0, 2.0, 3.0, 4.0, 5.0])
+plt.yticks([15.0, 20.0, 25.0, 30.0, 35.0])
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_SN_f_rec.pdf', format="pdf", bbox_inches="tight")
 plt.show()
@@ -441,8 +447,8 @@ SN_vals = np.array([2.56, 3.49, 4.58, 8.00, 10.2, 12.8, 15.5, 18.3, 23.1, 26.5, 
 plt.figure(figsize=(8, 6))
 plt.plot(ell_max, SN_vals, color='mediumblue', linewidth=3)
 plt.xscale('log')
-plt.xlabel(r'$\ell_{\rm max}$', fontsize=24)
-plt.ylabel(r'$S/N$', fontsize=24)
+plt.xlabel(r'$\ell_{\rm max}$', fontsize=28)
+plt.ylabel(r'$S/N$', fontsize=28)
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_SN_ell_max.pdf', format="pdf", bbox_inches="tight")
 plt.show()
