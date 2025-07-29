@@ -268,11 +268,11 @@ plt.plot(ells, get_Dl(ells, clt_eta), label=r'$\log_{10} M_{\rm c} = 14.0$, $\et
 plt.plot(ells, get_Dl(ells, clt_lMc), label=r'$\log_{10} M_{\rm c} = 12.0$, $\eta_{\rm b} = 0.5$', color='deepskyblue', linewidth=2)
 plt.xlim(2, 1e4)
 plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
+plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=28)
 plt.loglog()
 plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-#plt.savefig('kSZ_angular_power_spectrum_baryonic_effects.pdf', format="pdf", bbox_inches="tight")
+plt.savefig('kSZ_angular_power_spectrum_baryonic_effects.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
@@ -297,7 +297,26 @@ plt.show()
 
 #%%
 
-bias_bat = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pE_bat)
+bg = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pG)
+be_he = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pE)
+be_bat = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=1e-4, a=1/(1+0.55), prof=pE_bat)
+
+he_2h = pk_mm(k_arr, 1/(1+0.55)) * bg * be_he
+bat_2h = pk_mm(k_arr, 1/(1+0.55)) * bg * be_bat
+
+plt.figure(figsize=(8, 6))
+plt.plot(k_arr, pk_eg(k_arr, 1/(1+0.55)), label=r'HE profile', color='crimson', linewidth=2)
+plt.plot(k_arr, pk_eg_bat(k_arr, 1/(1+0.55)), label=r'Battaglia profile', color='mediumblue', linewidth=2)
+plt.plot(k_arr, he_2h, label=r'HE 2-halo term', color='crimson', linestyle='dashed')
+plt.plot(k_arr, bat_2h, label=r'Battaglia 2-halo term', color='mediumblue', linestyle='dashed')
+plt.loglog()
+plt.xlim(1e-3, 1e1)
+plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
+plt.ylabel(r'$P_{\rm eg}(k)$', fontsize=28)
+plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower left")
+plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
+#plt.savefig('kSZ_baryon_model_2halo.pdf', format="pdf", bbox_inches="tight")
+plt.show()
 
 #%%
 
@@ -318,7 +337,7 @@ plt.plot(ells, get_Dl(ells, clt), label=r'HE profile', color='crimson', linewidt
 plt.plot(ells, get_Dl(ells, clt_bat), label=r'Battaglia profile', color='mediumblue', linewidth=2)
 plt.xlim(2, 1e4)
 plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
+plt.ylabel(r'$D_{\ell}^{\pi T}$', fontsize=28)
 plt.loglog()
 plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
@@ -351,7 +370,7 @@ plt.plot(ells, get_Dl(ells, clt), label=r'$P_{\rm mm}$', color='deepskyblue', li
 plt.plot(ells, get_Dl(ells, clt_bg), label=r'$P_{\rm mm} = P_{\rm gm} \, / \, b_{\rm g}$' + '\n' + r'$P_{\rm em} \,\, = P_{\rm eg} \, / \, b_{\rm g}$', color='mediumblue', linewidth=2, linestyle='dashed')
 plt.xlim(2, 1e4)
 plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$[\ell (\ell + 1) \, / \, 2 \pi] \, C_{\ell}^{\pi T}$', fontsize=28)
+plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=28)
 plt.loglog()
 plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower right")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
