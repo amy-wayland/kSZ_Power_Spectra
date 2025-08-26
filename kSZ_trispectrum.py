@@ -19,8 +19,8 @@ nM = ccl.halos.MassFuncTinker08(mass_def=hmd_200c)
 bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200c)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200c, concentration=cM, fourier_analytic=True)
 pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200c, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, bg_0=2.04)
-hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200c, log10M_max=15., log10M_min=10., nM=32)
 pE = hp.HaloProfileDensityHE(mass_def=hmd_200c, concentration=cM, lMc=14.0, beta=0.6, A_star=0.03, eta_b=0.5)
+hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200c, log10M_max=15., log10M_min=10., nM=32)
 
 #%%
 
@@ -37,7 +37,7 @@ def F_2(k1_vec, k2_vec):
     k2_norm = np.linalg.norm(k2_vec)
     dot_prod = np.dot(k1_vec, k2_vec)
     mu_12 = dot_prod / (k1_norm * k2_norm)
-    return 5/7 + (mu_12 / 2) * ((k1_norm / k2_norm) + (k2_norm / k1_norm)) + (2/7) * mu_12**2
+    return 5/7 + (mu_12/2) * ((k1_norm / k2_norm) + (k2_norm / k1_norm)) + (2/7) * mu_12**2
 
 def G_2(k1_vec, k2_vec):
     k1_norm = np.linalg.norm(k1_vec)
@@ -104,7 +104,6 @@ def T_1113(k, kp, kpp):
 def T_tree_level(k, kp, kpp):
     return T_1122(k, kp, kpp) + T_1113(k, kp, kpp)
 
-
 def tri_4h(k, kp, kpp):
     T_tree = T_tree_level(k, kp, kpp)
     k1 = k - kp
@@ -123,9 +122,9 @@ def tri_4h(k, kp, kpp):
 
 #%%
 
-n_k = 22
-n_mu = 14
-n_phi = 14
+n_k = 24
+n_mu = 16
+n_phi = 16
 
 lk_min, lk_max = -3, 1
 lkps = np.linspace(lk_min, lk_max, n_k)
@@ -220,15 +219,15 @@ kmax = 1E1
 ks = np.geomspace(kmin, kmax, n_k)
 logk = np.log(ks)
 
-Pk_cng = []
+Pk_cng_par = []
 
 for ik, k in enumerate(ks):
     print(ik)
     t = P_T_par(k, aHf, tri_4h, P_L_interp)
     print(t)
-    Pk_cng.append(t)
+    Pk_cng_par.append(t)
     
-Pk_cng = np.array(Pk_cng)
+Pk_cng_par = np.array(Pk_cng_par)
 
 print('k_vals=', ks)
-print("Pk_cng=", Pk_cng)
+print("Pk_cng_par=", Pk_cng_par)
