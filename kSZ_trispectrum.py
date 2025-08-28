@@ -4,7 +4,16 @@ import HaloProfiles as hp
 
 #%%
 
-cosmo = ccl.CosmologyVanillaLCDM()
+COSMO_P18 = {"Omega_c": 0.26066676,
+             "Omega_b": 0.048974682,
+             "h": 0.6766,
+             "n_s": 0.9665,
+             "sigma8": 0.8102,
+             "matter_power_spectrum": "halofit"}
+             
+cosmo = ccl.Cosmology(**COSMO_P18)
+cosmo.compute_growth()
+
 z = 0.55
 a = 1/(1+z)
 H = cosmo['h'] * ccl.h_over_h0(cosmo, a) / ccl.physical_constants.CLIGHT_HMPC
