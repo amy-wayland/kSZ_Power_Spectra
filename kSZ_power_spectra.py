@@ -318,7 +318,7 @@ lk_arr_mm = np.log(k_arr_mm)
 pkp_mm = aHf**2 * pk_mm(k_arr_mm, a) / (k_arr_mm**2)
 
 pkp_mm_interp = np.interp(k_arr, k_arr_mm, pkp_mm)
-pkp_tot = pkp(k_arr, a) + pkp_bi_1h + pkp_bi_3h + pkp_mm_interp # + pkp_tri_1h + pkp_tri_4h
+pkp_tot = pkp(k_arr, a) + pkp_bi_1h + pkp_bi_3h + pkp_mm_interp + pkp_tri_1h + pkp_tri_4h
 
 #%%
 
@@ -485,7 +485,7 @@ clt_tri_4h = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pk_t4h
 clp_tri_4h = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=pk_p4h)
 clp_tri_1h = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=pk_p1h)
 clp_mm = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=Pk2D_mm)
-clp_tot = clp + clp_mm + clp_bi_1h + clp_bi_3h # + clp_tri_1h + clp_tri_4h
+clp_tot = clp + clp_mm + clp_bi_1h + clp_bi_3h + clp_tri_1h + clp_tri_4h
 
 #%%
 
