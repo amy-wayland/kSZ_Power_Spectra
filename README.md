@@ -10,4 +10,6 @@ kSZ_extra_results.py : investigates the impact of baryonic effects, baryon model
 
 kSZ_trispectrum.py : computes the contributions from the trispectrum term
 
+kSZ_satellites.py : investigates the effect of the fraction of satellite galaxies on the SNR
+
 kSZ_power_spectra.py : 3D and angular power spectra calculations
