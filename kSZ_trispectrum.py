@@ -1,6 +1,7 @@
 import numpy as np
-import pyccl as ccl
 import HaloProfiles as hp
+import scipy.integrate as si
+import pyccl as ccl
 
 #%%
 
@@ -131,7 +132,7 @@ def tri_4h(k, kp, kpp):
 
 #%%
 
-n_k = 24
+n_k = 36
 n_mu = 16
 n_phi = 16
 
@@ -228,15 +229,82 @@ kmax = 1E1
 ks = np.geomspace(kmin, kmax, n_k)
 logk = np.log(ks)
 
-Pk_cng_par = []
+Pk_cng = []
 
 for ik, k in enumerate(ks):
     print(ik)
-    t = P_T_par(k, aHf, tri_4h, P_L_interp)
+    t = P_T_perp(k, aHf, tri_4h, P_L_interp)
     print(t)
-    Pk_cng_par.append(t)
+    Pk_cng.append(t)
     
-Pk_cng_par = np.array(Pk_cng_par)
+Pk_cng = np.array(Pk_cng)
 
 print('k_vals=', ks)
-print("Pk_cng_par=", Pk_cng_par)
+print("Pk_cng=", Pk_cng)
+
+#%%
+
+from scipy.interpolate import RectBivariateSpline
+
+log10M_vals = np.linspace(11, 15, 128)
+M_vals = 10**log10M_vals
+
+nM_vals = nM(cosmo, M_vals, a=1/(1+0.55))
+bM_vals = bM(cosmo, M_vals, a=1/(1+0.55))
+
+log10M_grid = np.linspace(11, 15, 128)
+M_grid = 10**log10M_grid
+k_grid = np.logspace(-3, 2, 128)
+log10k_grid = np.log10(k_grid)
+
+u_pM_grid = np.zeros((len(k_grid), len(M_grid)))
+u_pG_grid = np.zeros((len(k_grid), len(M_grid)))
+u_pE_grid = np.zeros((len(k_grid), len(M_grid)))
+
+for i, k_val in enumerate(k_grid):
+    for j, M_val in enumerate(M_grid):
+        u_pM_grid[i, j] = pM.fourier(cosmo, k_val, M_val, a) / pM.get_normalization(cosmo, a, hmc=hmc)
+        u_pG_grid[i, j] = pG.fourier(cosmo, k_val, M_val, a) / pG.get_normalization(cosmo, a, hmc=hmc)
+        u_pE_grid[i, j] = pE.fourier(cosmo, k_val, M_val, a) / pE.get_normalization(cosmo, a, hmc=hmc)
+
+interp_pM = RectBivariateSpline(log10k_grid, log10M_grid, u_pM_grid)
+interp_pG = RectBivariateSpline(log10k_grid, log10M_grid, u_pG_grid)
+interp_pE = RectBivariateSpline(log10k_grid, log10M_grid, u_pE_grid)
+
+#%%
+
+def tri_1h(k, kp, kpp):
+    k1 = k - kp
+    k2 = -(k - kpp)
+    k3 = kp
+    k4 = -kpp
+    ks = [k1, k2, k3, k4]
+    k_norms = [max(np.linalg.norm(ki), 1e-4) for ki in ks]
+    log10M = np.log10(M_vals)
+    u1 = interp_pG.ev(np.log10(k_norms[0]), log10M)
+    u2 = interp_pE.ev(np.log10(k_norms[1]), log10M)
+    u3 = interp_pM.ev(np.log10(k_norms[2]), log10M)
+    u4 = interp_pM.ev(np.log10(k_norms[3]), log10M)
+    integrand = nM_vals * bM_vals * u1 * u2 * u3 * u4
+    result = np.trapz(integrand, log10M)
+    return result
+
+#%%
+
+kmin = 1E-3
+kmax = 1E1
+ks = np.geomspace(kmin, kmax, n_k)
+logk = np.log(ks)
+
+Pk_cng = []
+
+for ik, k in enumerate(ks):
+    print(ik)
+    t = P_T_par(k, aHf, tri_1h, P_L_interp)
+    print(t)
+    Pk_cng.append(t)
+    
+Pk_cng = np.array(Pk_cng)
+
+print('k_vals=', ks)
+print("Pk_cng=", Pk_cng)
