@@ -1,7 +1,7 @@
 import numpy as np
+import pyccl as ccl
 import HaloProfiles as hp
 import scipy.integrate as si
-import pyccl as ccl
 
 #%%
 
