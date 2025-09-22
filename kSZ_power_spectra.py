@@ -131,7 +131,6 @@ def get_pk2d(cosmo, k_arr, a_arr, pk_dict, kind, variant='full'):
         
         return pkf1, pkf2
 
-
 #%%
 # Set-up
 
@@ -157,7 +156,7 @@ M = 10**log10M
 plt.rcParams.update({
     "mathtext.fontset": "stix",
     "font.family": "serif",
-    "font.size": 16})
+    "font.size": 20})
 
 #%%
 # Halo model implementation
@@ -170,8 +169,8 @@ nM = ccl.halos.MassFuncTinker08(mass_def=hmd_200c)
 bM = ccl.halos.HaloBiasTinker10(mass_def=hmd_200c)
 pM = ccl.halos.HaloProfileNFW(mass_def=hmd_200c, concentration=cM)
 pG = ccl.halos.HaloProfileHOD(mass_def=hmd_200c, concentration=cM, log10Mmin_0=12.89, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1)
-pG_cen = ccl.halos.HaloProfileHOD(mass_def=hmd_200c, concentration=cM, log10Mmin_0=np.log10(1.03e13), log10M0_0=np.log10(1e14), log10M1_0=np.log10(1.2e14), alpha_0=1.1)
-pG_sat = ccl.halos.HaloProfileHOD(mass_def=hmd_200c, concentration=cM, log10Mmin_0=12.733, log10M0_0=12.92, log10M1_0=13.95, alpha_0=1.1, fc_0=0.3)
+pG_cen = pG
+pG_sat = ccl.halos.HaloProfileHOD(mass_def=hmd_200c, concentration=cM, log10Mmin_0=11.15, log10M0_0=11.15, log10M1_0=13.95, alpha_0=1.1, fc_0=0.0)
 pE = hp.HaloProfileDensityHE(mass_def=hmd_200c, concentration=cM, lMc=14.0, beta=0.6, A_star=0.03, eta_b=0.5)
 #pE = hp.HaloProfileDensityBattaglia(mass_def=hmd_200c)
 hmc = ccl.halos.HMCalculator(mass_function=nM, halo_bias=bM, mass_def=hmd_200c, log10M_max=15.0, log10M_min=10.0, nM=32)
@@ -295,6 +294,7 @@ pkp_bi_1h = np.array([
     3.45366828e-04, 1.00237549e-04, 2.48069961e-05, 4.27496287e-06
 ])
 
+
 pkp_tri_4h = np.array([
    -2.74589264e-05, -2.75712435e-05, -2.70575080e-05, -2.36572085e-05,
    -1.03999570e-05,  3.10765950e-05,  1.42379089e-04,  4.03333206e-04,
@@ -302,7 +302,25 @@ pkp_tri_4h = np.array([
     3.15806871e-03,  2.80160820e-03,  2.07898200e-03,  1.33893468e-03,
     7.15796824e-04,  3.29001075e-04,  1.31829705e-04,  4.79823993e-05,
     1.61359235e-05,  5.14540594e-06,  1.61659143e-06,  3.85996436e-07
-])
+]) # matter only
+
+pkp_tri_4h = np.array([
+    -4.01373935e-05, -4.02619314e-05, -3.91095857e-05, -3.23525606e-05,
+    -6.83787894e-06,  7.17790709e-05,  2.81334336e-04,  7.71145447e-04,
+     1.74623920e-03,  3.21476763e-03,  4.50446558e-03,  5.49336778e-03,
+     5.65379940e-03,  4.83789309e-03,  3.38730106e-03,  1.98767626e-03,
+     9.24683492e-04,  3.52330185e-04,  1.12259517e-04,  3.14806385e-05,
+     7.65609722e-06,  1.50027399e-06,  2.31945952e-07,  1.64692222e-08
+]) # full profiles
+
+pkp_tri_1h = np.array([
+    2.33517764e-07, 5.20170623e-07, 1.15870129e-06, 2.58105132e-06,
+    5.74937507e-06, 1.28068432e-05, 2.85271168e-05, 6.35420311e-05,
+    1.41526040e-04, 3.15173286e-04, 7.01656167e-04, 1.56096155e-03,
+    3.46716914e-03, 7.67402458e-03, 1.68517692e-02, 3.63656771e-02,
+    7.55313834e-02, 1.44458803e-01, 2.33119625e-01, 2.76043577e-01,
+    2.18866486e-01, 1.36074379e-01, 6.68458957e-02, 1.78255269e-02,
+]) # matter only
 
 pkp_tri_1h = np.array([
     3.21729788e-07, 7.16662163e-07, 1.59637442e-06, 3.55589804e-06,
@@ -311,91 +329,83 @@ pkp_tri_1h = np.array([
     4.64080532e-03, 9.97848185e-03, 2.07485535e-02, 4.06556541e-02,
     7.25463308e-02, 1.13382592e-01, 1.46109229e-01, 1.38296637e-01,
     8.81480240e-02, 4.39681567e-02, 1.68431871e-02, 2.95159966e-03
-])
+]) # full profiles
 
 k_arr_mm = np.logspace(-3, 1, 64)
 lk_arr_mm = np.log(k_arr_mm)
 pkp_mm = aHf**2 * pk_mm(k_arr_mm, a) / (k_arr_mm**2)
 
 pkp_mm_interp = np.interp(k_arr, k_arr_mm, pkp_mm)
-pkp_tot = pkp(k_arr, a) + pkp_bi_1h + pkp_bi_3h + pkp_mm_interp + pkp_tri_1h + pkp_tri_4h
+pkp_tot = pkp(k_arr, a) + pkp_mm_interp + pkp_bi_1h + pkp_bi_3h + pkp_tri_4h + pkp_tri_1h
 
 #%%
 
 plt.figure(figsize=(8, 6))
-plt.plot(k_arr, pkt1(k_arr, a), label=r'$P_{q_\perp,1}$', color='mediumblue', linewidth=2)
-plt.plot(k_arr, pkt_1h(k_arr, a), label=r'$P_{q_\perp,1}^{\rm (1h)}$', color='mediumblue', linestyle='dashed')
-plt.plot(k_arr, pkt_2h(k_arr, a), label=r'$P_{q_\perp,1}^{\rm (2h)}$', color='mediumblue', linestyle='dotted')
-plt.plot(k_arr, -pkt2(k_arr, a), label=r'$-P_{q_\perp,2}$', color='deepskyblue', linewidth=2)
-plt.plot(k_arr, pkt(k_arr, a), label=r'$P_{q_\perp, \rm tot}$', color='crimson', linewidth=2)
+plt.plot(k_arr, pkt1(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$', color='mediumblue', linewidth=2)
+plt.plot(k_arr, pkt_1h(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (1h)}$', color='mediumblue', linestyle='dashed')
+plt.plot(k_arr, pkt_2h(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (2h)}$', color='mediumblue', linestyle='dotted')
+plt.plot(k_arr, -pkt2(k_arr, a), label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', color='deepskyblue', linewidth=2)
+plt.plot(k_arr, pkt(k_arr, a), label=r'${\rm Total}$', color='crimson', linewidth=2)
 plt.xlim(1e-3, 1e1)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
-plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=28)
+plt.xlabel(r'$k \; [\mathrm{Mpc}^{-1}]$', fontsize=32)
+plt.ylabel(r'$P_{q_\perp}^{\rm ge}(k) \; [\mathrm{Mpc}^{3}]$', fontsize=32)
 plt.loglog()
-plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower left")
+plt.legend(fontsize=22, frameon=False, ncol=1, loc="lower left")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_power_spectrum_transverse.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(k_arr, pkp1(k_arr, a), label=r'$P_{q_\parallel,1}$', color='mediumblue', linewidth=2)
-plt.plot(k_arr, pkp_1h(k_arr, a), label=r'$P_{q_\parallel,1}^{\rm (1h)}$', color='mediumblue', linestyle='dashed')
-plt.plot(k_arr, pkp_2h(k_arr, a), label=r'$P_{q_\parallel,1}^{\rm (2h)}$', color='mediumblue', linestyle='dotted')
-plt.plot(k_arr, pkp2(k_arr, a), label=r'$P_{q_\parallel,2}$', color='deepskyblue', linewidth=2)
-plt.plot(k_arr, pkp(k_arr, a), label=r'$P_{q_\parallel,\rm tot}$', color='crimson', linewidth=2)
+plt.plot(k_arr, pkp1(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$', color='mediumblue', linewidth=2)
+plt.plot(k_arr, pkp_1h(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (1h)}$', color='mediumblue', linestyle='dashed')
+plt.plot(k_arr, pkp_2h(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (2h)}$', color='mediumblue', linestyle='dotted')
+plt.plot(k_arr, pkp2(k_arr, a), label=r'${\rm \langle gm \rangle \langle em \rangle}$', color='deepskyblue', linewidth=2)
+plt.plot(k_arr, -pkp2(k_arr, a), label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', color='deepskyblue', linestyle='dashed')
+plt.plot(k_arr, pkp(k_arr, a), label=r'${\rm Total}$', color='crimson', linewidth=2)
 plt.xlim(1e-3, 1e1)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
-plt.ylabel(r'$P_{q_\parallel}^{\pi T}(k)$', fontsize=28)
+plt.ylim(2e-7, 9e1)
+plt.xlabel(r'$k \; [\mathrm{Mpc}^{-1}]$', fontsize=32)
+plt.ylabel(r'$P_{q_\parallel}^{\rm ge}(k) \; [\mathrm{Mpc}^{3}]$', fontsize=32)
 plt.loglog()
-plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower left")
+plt.legend(fontsize=22, frameon=False, ncol=2, loc="upper center")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_power_spectrum_longitudinal.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(k_arr, pkt1(k_arr, a), label=r'$P_{q_\perp,1}$', color='mediumblue', linewidth=2)
-plt.plot(k_arr, -pkt2(k_arr, a), label=r'$-P_{q_\perp,2}$', color='deepskyblue', linewidth=2)
-plt.plot(k_arr, pkt_tri_4h, label=r'$P_{q_\perp, \rm c}$', color='blueviolet', linewidth=2)
-plt.plot(k_arr, pkt(k_arr, a)+pkt_tri_4h, label=r'$P_{q_\perp, \rm tot}$', color='crimson', linewidth=2)
+plt.plot(k_arr, pkt1(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$', color='mediumblue', linewidth=2)
+plt.plot(k_arr, -pkt2(k_arr, a), label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', color='deepskyblue', linewidth=2)
+plt.plot(k_arr, pkt_tri_4h, label=r'$T_{\rm 4h}$', color='blueviolet', linewidth=2)
+plt.plot(k_arr, pkt(k_arr, a)+pkt_tri_4h, label=r'${\rm Total}$', color='crimson', linewidth=2)
 plt.xlim(1e-3, 1e1)
-plt.ylim(5e-8, 1e1)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
-plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=28)
+plt.ylim(5e-8, 5e1)
+plt.xlabel(r'$k \; [\mathrm{Mpc}^{-1}]$', fontsize=32)
+plt.ylabel(r'$P_{q_\perp}^{\rm ge}(k) \; [\mathrm{Mpc}^{3}]$', fontsize=32)
 plt.loglog()
-plt.legend(fontsize=20, frameon=False, ncol=2, loc="upper center")
+plt.legend(fontsize=22, frameon=False, ncol=2, loc="upper center")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_power_spectrum_transverse_with_cng.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(k_arr, pkp1(k_arr, a), label=r'$P_{q_\parallel,1}$', color='mediumblue', linewidth=2)
-plt.plot(k_arr, pkp2(k_arr, a), label=r'$-P_{q_\parallel,2}$', color='deepskyblue', linewidth=2)
-plt.plot(k_arr, pkp_bi_1h, label=r'$P_{q_\parallel, B_{\rm 1h}}$', color='hotpink', linewidth=2)
-plt.plot(k_arr, pkp_bi_3h, label=r'$P_{q_\parallel, B_{\rm 3h}}$', color='hotpink', linewidth=2, linestyle='--')
-#plt.plot(k_arr, pkp_tri_1h, label=r'$P_{q_\parallel, T_{\rm 1h}}$', color='blueviolet', linewidth=2)
-#plt.plot(k_arr, pkp_tri_4h, label=r'$P_{q_\parallel, T_{\rm 4h}}$', color='blueviolet', linewidth=2, linestyle='--')
-plt.plot(k_arr_mm, pkp_mm, label=r'$P_{\rm mm}$', color='gold')
-plt.plot(k_arr, pkp_tot, label=r'$P_{q_\parallel, \rm tot}$', color='crimson')
+plt.plot(k_arr, pkp1(k_arr, a), label=r'${\rm \langle ge \rangle \langle mm \rangle}$', color='mediumblue', linewidth=2)
+plt.plot(k_arr, pkp2(k_arr, a), label=r'${\rm \langle gm \rangle \langle em \rangle}$', color='deepskyblue', linewidth=2)
+plt.plot(k_arr, -pkp2(k_arr, a), color='deepskyblue', linestyle='dashed')
+plt.plot(k_arr, pkp_bi_1h, label=r'${B_{\rm 1h}}$', color='darkorange', linewidth=2)
+plt.plot(k_arr, pkp_bi_3h, label=r'${B_{\rm 3h}}$', color='gold', linewidth=2)
+plt.plot(k_arr, pkp_tri_1h, label=r'${T_{\rm 1h}}$', color='orchid', linewidth=2)
+plt.plot(k_arr, pkp_tri_4h, label=r'${T_{\rm 4h}}$', color='blueviolet', linewidth=2)
+plt.plot(k_arr, -pkp_tri_4h, color='blueviolet', linestyle='dashed')
+plt.plot(k_arr_mm, pkp_mm, label=r'${P_{\rm vv}}$', color='slategray', linewidth=2)
+plt.plot(k_arr, pkp_tot, label=r'${\rm Total}$', color='crimson', linewidth=2)
 plt.xlim(1e-3, 1e1)
-plt.ylim(0.9e-13, 9.9e6)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
-plt.ylabel(r'$P_{q_\parallel}^{\pi T}(k)$', fontsize=28)
+plt.ylim(0.9e-13, 9e10)
+plt.xlabel(r'$k \; [\mathrm{Mpc}^{-1}]$', fontsize=32)
+plt.ylabel(r'$P_{q_\parallel}^{\rm ge}(k) \; [\mathrm{Mpc}^{3}]$', fontsize=32)
 plt.loglog()
-plt.legend(fontsize=20, frameon=False, ncol=3, loc="upper center")
+plt.legend(fontsize=22, frameon=False, ncol=3, loc="upper center")
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
 #plt.savefig('kSZ_power_spectrum_longitudinal_with_cng.pdf', format="pdf", bbox_inches="tight")
-plt.show()
-
-plt.figure(figsize=(8, 6))
-plt.plot(k_arr, pkt_cen(k_arr, a), label=r'$P_{q_\perp}^{\rm (cen)}$', color='crimson', linewidth=2)
-plt.plot(k_arr, pkt_sat(k_arr, a), label=r'$P_{q_\perp}^{\rm (cen+sats)}$', color='mediumblue', linewidth=2)
-plt.xlim(1e-3, 1e1)
-plt.xlabel(r'$k \; [h \, \mathrm{Mpc}^{-1}]$', fontsize=28)
-plt.ylabel(r'$P_{q_\perp}^{\pi T}(k)$', fontsize=28)
-plt.loglog()
-plt.legend(fontsize=20, frameon=False, ncol=1, loc="lower left")
-plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-#plt.savefig('kSZ_power_spectrum_transverse_satellites.pdf', format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
@@ -485,101 +495,78 @@ clt_tri_4h = perp_prefac * ccl.angular_cl(cosmo, tgt, tkt, ells, p_of_k_a=pk_t4h
 clp_tri_4h = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=pk_p4h)
 clp_tri_1h = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=pk_p1h)
 clp_mm = ccl.angular_cl(cosmo, tgp, tkp, ells, p_of_k_a=Pk2D_mm)
-clp_tot = clp + clp_mm + clp_bi_1h + clp_bi_3h + clp_tri_1h + clp_tri_4h
+clp_tot = clp + clp_mm + clp_bi_1h + clp_bi_3h + clp_tri_4h + clp_tri_1h
+clt_gk = clt
 
 #%%
 
 plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, clt), color="mediumblue", label=r'$D_{\ell, \perp, T}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp), color="crimson", label=r'$D_{\ell, \parallel, T}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt1), color="mediumblue", label=r'$D_{\ell, \perp, 1}$', linestyle='dashed')
-plt.plot(ells, get_Dl(ells, -clp1), color="crimson", label=r'$D_{\ell, \parallel, 1}$', linestyle='dashed')
-plt.plot(ells, get_Dl(ells, -clt2), color="mediumblue", label=r'$-D_{\ell, \perp, 2}$', linestyle='dotted')
-plt.plot(ells, get_Dl(ells, -clp2), color="crimson", label=r'$D_{\ell, \parallel, 2}$', linestyle='dotted')
-plt.xlim(2, 1e4)
-plt.ylim(0.9e-19, 9e-8)
-plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell}^{\pi T}$', fontsize=28)
-plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="upper center", ncol=3)
-plt.show()
-
-plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, clt1), color="mediumblue", label=r'$D_{\ell, \perp, 1}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt_1h), color="mediumblue", label=r'$D_{\ell, \perp, 1}^{\rm (1h)}$', linestyle='dashed')
-plt.plot(ells, get_Dl(ells, clt_2h), color="mediumblue", label=r'$D_{\ell, \perp, 1}^{\rm (2h)}$', linestyle='dotted')
-plt.plot(ells, get_Dl(ells, -clt2), color="deepskyblue", label=r'$-D_{\ell, \perp, 2}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt), color="crimson", label=r'$D_{\ell, \perp, \rm tot}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt1), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt_1h), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (1h)}$', linestyle='dashed')
+plt.plot(ells, get_Dl(ells, clt_2h), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (2h)}$', linestyle='dotted')
+plt.plot(ells, get_Dl(ells, -clt2), color="deepskyblue", label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt), color="crimson", label=r'${\rm Total}$', linewidth=2)
 plt.xlim(2, 1e4)
 plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=28)
+plt.xlabel(r'$\ell$', fontsize=32)
+plt.ylabel(r'$D_{\ell, \perp}^{\rm ge}$', fontsize=32)
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="lower right", ncol=1)
+plt.legend(fontsize=22, frameon=False, loc="lower right", ncol=1)
 #plt.savefig('kSZ_angular_power_spectra_transverse.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, -clp1), color="mediumblue", label=r'$D_{\ell, \parallel, 1}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp_1h), color="mediumblue", label=r'$D_{\ell, \parallel, 1}^{\rm (1h)}$', linestyle='dashed')
-plt.plot(ells, get_Dl(ells, -clp_2h), color="mediumblue", label=r'$D_{\ell, \parallel, 1}^{\rm (2h)}$', linestyle='dotted')
-plt.plot(ells, get_Dl(ells, -clp2), color="deepskyblue", label=r'$D_{\ell, \parallel, 2}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp), color="crimson", label=r'$D_{\ell, \parallel, \rm tot}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp1), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp_1h), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (1h)}$', linestyle='dashed')
+plt.plot(ells, get_Dl(ells, -clp_2h), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$ ${\rm (2h)}$', linestyle='dotted')
+plt.plot(ells, get_Dl(ells, -clp2), color="deepskyblue", label=r'${\rm \langle gm \rangle \langle em \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clp2), color="deepskyblue", label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', linestyle='dashed')
+plt.plot(ells, get_Dl(ells, -clp), color="crimson", label=r'${\rm Total}$', linewidth=2)
 plt.xlim(2, 1e4)
+plt.ylim(3e-20, 5e-13)
 plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell, \parallel}^{\pi T}$', fontsize=28)
+plt.xlabel(r'$\ell$', fontsize=32)
+plt.ylabel(r'$D_{\ell, \parallel}^{\rm ge}$', fontsize=32)
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="best", ncol=1)
+plt.legend(fontsize=22, frameon=False, loc="upper center", ncol=2)
 #plt.savefig('kSZ_angular_power_spectra_longitudinal.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, clt1), color="mediumblue", label=r'$D_{\ell, \perp, 1}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clt2), color="deepskyblue", label=r'$-D_{\ell, \perp, 2}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt_tri_4h), color="blueviolet", label=r'$D_{\ell, \perp, \rm c}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt+clt_tri_4h), color="crimson", label=r'$D_{\ell, \perp, \rm tot}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt1), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clt2), color="deepskyblue", label=r'$-{\rm \langle gm \rangle \langle em \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt_tri_4h), color="blueviolet", label=r'$T_{\rm 4h}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clt+clt_tri_4h), color="crimson", label=r'${\rm Total}$', linewidth=2)
 plt.xlim(2, 1e4)
-plt.ylim(5e-18, 1e-8)
+plt.ylim(5e-18, 8e-8)
 plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=28)
+plt.xlabel(r'$\ell$', fontsize=32)
+plt.ylabel(r'$D_{\ell, \perp}^{\rm ge}$', fontsize=32)
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="upper center", ncol=2)
+plt.legend(fontsize=22, frameon=False, loc="upper center", ncol=2)
 #plt.savefig('kSZ_angular_power_spectra_transverse_with_cng.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, -clp1), color="mediumblue", label=r'$D_{\ell, \parallel, 1}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp2), color="deepskyblue", label=r'$D_{\ell, \parallel, 2}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp_bi_1h), color="hotpink", label=r'$D_{\ell, \parallel, B_{\rm 1h}}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp_bi_3h), color="hotpink", label=r'$D_{\ell, \parallel, B_{\rm 3h}}$', linewidth=2, linestyle='--')
-#plt.plot(ells, get_Dl(ells, -clp_tri_1h), color="blueviolet", label=r'$D_{\ell, \parallel, T_{\rm 1h}}$', linewidth=2)
-#plt.plot(ells, get_Dl(ells, -clp_tri_4h), color="blueviolet", label=r'$D_{\ell, \parallel, T_{\rm 4h}}$', linewidth=2, linestyle='--')
-plt.plot(ells, get_Dl(ells, -clp_mm), color="gold", label=r'$D_{\ell, \rm mm}$', linewidth=2)
-plt.plot(ells, get_Dl(ells, -clp_tot), color="crimson", label=r'$D_{\ell, \parallel, \rm tot}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp1), color="mediumblue", label=r'${\rm \langle ge \rangle \langle mm \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp2), color="deepskyblue", label=r'${\rm \langle gm \rangle \langle em \rangle}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clp2), color="deepskyblue", linestyle='dashed')
+plt.plot(ells, get_Dl(ells, -clp_bi_1h), color="darkorange", label=r'$B_{\rm 1h}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp_bi_3h), color="gold", label=r'$B_{\rm 3h}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp_tri_1h), color="orchid", label=r'$T_{\rm 1h}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clp_tri_1h), color="orchid", linestyle='--')
+plt.plot(ells, get_Dl(ells, -clp_tri_4h), color="blueviolet", label=r'$T_{\rm 4h}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, clp_tri_4h), color="blueviolet", linestyle='--')
+plt.plot(ells, get_Dl(ells, -clp_mm), color="slategray", label=r'$P_{\rm vv}$', linewidth=2)
+plt.plot(ells, get_Dl(ells, -clp_tot), color="crimson", label=r'${\rm Total}$', linewidth=2)
 plt.xlim(2, 1e4)
-plt.ylim(9e-32, 1e-8)
+plt.ylim(9e-32, 9e-6)
 plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell, \parallel}^{\pi T}$', fontsize=28)
+plt.xlabel(r'$\ell$', fontsize=32)
+plt.ylabel(r'$D_{\ell, \parallel}^{\rm ge}$', fontsize=32)
 plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="upper center", ncol=3)
+plt.legend(fontsize=22, frameon=False, loc="upper center", ncol=3)
 #plt.savefig('kSZ_angular_power_spectra_longitudinal_with_cng.pdf',  format="pdf", bbox_inches="tight")
-plt.show()
-
-plt.figure(figsize=(8, 6))
-plt.plot(ells, get_Dl(ells, clt_cen), color="crimson", label=r'$D_{\ell, \perp}^{\rm (cen)}$', linewidth=2)
-#plt.plot(ells, get_Dl(ells, clt1), color="deepskyblue", label=r'Central with low satellite fraction', linewidth=2)
-plt.plot(ells, get_Dl(ells, clt_sat), color="mediumblue", label=r'$D_{\ell, \perp}^{\rm (cen+sats)}$', linewidth=2)
-plt.xlim(2, 1e4)
-plt.loglog()
-plt.xlabel(r'$\ell$', fontsize=28)
-plt.ylabel(r'$D_{\ell, \perp}^{\pi T}$', fontsize=28)
-plt.tick_params(which='both', top=True, right=True, direction='in', width=1, length=5)
-plt.legend(fontsize=20, frameon=False, loc="lower right", ncol=1)
-#plt.savefig('kSZ_angular_power_spectra_transverse_satellites.pdf',  format="pdf", bbox_inches="tight")
 plt.show()
 
 #%%
@@ -590,8 +577,6 @@ plt.show()
 # Auto-correlations
 clt_gg = perp_prefac * ccl.angular_cl(cosmo, tgt, tgt, ells, p_of_k_a=pkt)
 clt_kk = perp_prefac * ccl.angular_cl(cosmo, tkt, tkt, ells, p_of_k_a=pkt)
-
-#%%
 
 # Galaxy noise
 sigma_v = 300e3 / ccl.physical_constants.CLIGHT
@@ -634,18 +619,24 @@ nl_s4 /= T_CMB_uK**2
 nl_s4 = 1/(1/nl_s4+1/nl_so)
 nl_kk_s4 = np.exp(interp1d(ln, np.log(nl_s4), bounds_error=False, fill_value='extrapolate')(ells))
 
+# Beam
+fwhm = 1.4 # arcmins
+fwhm = 1.4 * np.pi / (60 * 180) # radians
+sigma = fwhm / 2.355
+bl = np.exp(-0.5 * ells * (ells + 1) * sigma**2) # multiply Cl by bl
+
 #%%
 
 f_sky = 0.5
 
 # CVL
-var_irr = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr) + clt**2) / ((2*ells+1) * f_sky * np.gradient(ells))
+var_irr = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr) + clt_gk**2) / ((2*ells+1) * f_sky * np.gradient(ells))
 
 # SO
-var_so = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr+nl_kk_so) + clt**2) / ((2*ells+1) * f_sky * np.gradient(ells))
+var_so = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr+nl_kk_so) + clt_gk**2) / ((2*ells+1) * f_sky * np.gradient(ells))
 
 # S4
-var_s4 = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr+nl_kk_s4) + clt**2) / ((2*ells+1) * f_sky * np.gradient(ells))
+var_s4 = ((clt_gg+nl_gg) * (clt_kk+nl_kk_irr+nl_kk_s4) + clt_gk**2) / ((2*ells+1) * f_sky * np.gradient(ells))
 
 #%%
 
@@ -653,29 +644,37 @@ def S_to_N(Cl, var):
     s2n = np.sqrt(np.sum(Cl**2 / var))
     return s2n
 
-var = var_so
+var = var_irr
 
 # kSZ-only
-sn_ksz = S_to_N(clt1+clt2, var)
+sn_ksz = S_to_N(clt_gk, var)
 print('S/N kSZ =', f"{sn_ksz:.4}")
+
+# Dominant contribution
+sn_1 = S_to_N(clt1, var)
+print('S/N <ge><vv> =', f"{sn_1:.4}")
 
 # Sub-dominant contribution
 sn_sd = S_to_N(clt2, var)
 print('S/N <ev><gv> =', f"{sn_sd:.4}")
 
-# Trispectrum contribution
-#sn_tri = S_to_N(clt_tri_4h, var)
-#print('S/N cng =', f"{sn_tri:.4}")
-
-# Longitudinal mode
-clp_tot = clp1 + clp2 #+ clp_bi_1h + clp_bi_3h + clp_mm
-sn_par = S_to_N(clp_tot, var)
-print('S/N parallel =', f"{sn_par:.4}")
-
-# Twoe-halo term only
-sn_1h = S_to_N(clt1-clt_1h, var)
-print('S/N 2h =', f"{sn_1h:.4}")
-
 # Satelite galaxies
 sn_cen = S_to_N(clt_sat-clt_cen, var)
 print('S/N cen+sat vs cen only =', f"{sn_cen:.4}")
+
+# Two-halo term only
+sn_1h = S_to_N(clt1-clt_1h, var)
+print('S/N 2h =', f"{sn_1h:.4}")
+
+# Trispectrum contribution
+sn_tri = S_to_N(clt_tri_4h, var)
+print('S/N cng =', f"{sn_tri:.4}")
+
+# Main longitudinal mode
+sn_par = S_to_N(clp1, var)
+print('S/N parallel =', f"{sn_par:.4}")
+
+# Total longitudinal mode
+clp_tot = clp1 + clp2 + clp_tri_1h + clp_tri_4h + clp_bi_1h + clp_bi_3h + clp_mm
+sn_par = S_to_N(clp_tot, var)
+print('S/N parallel =', f"{sn_par:.4}")
