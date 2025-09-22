@@ -88,7 +88,7 @@ def bi_3h(k, kp):
     k_norms = [max(np.linalg.norm(ki), 1e-4) for ki in ks]
     I1 = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=k_norms[0], a=1/(1+0.55), prof=pM)
     I2 = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=k_norms[1], a=1/(1+0.55), prof=pM)
-    I3 = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=k_norms[2], a=1/(1+0.55), prof=pM)
+    I3 = ccl.halos.pk_1pt.halomod_bias_1pt(cosmo, hmc, k=k_norms[2], a=1/(1+0.55), prof=pG)
     I = I1 * I2 * I3
     return B_tree * I
 
@@ -113,7 +113,7 @@ sin_phis = np.sin(phis)
 
 def P_bi(k_mag, aHf, bi_func, P_L_interp):
     k_vec = np.array([0, 0, k_mag])
-    prefactor = aHf**2 / ((2 * np.pi)**3 * k_mag**2)
+    prefactor = aHf**2 / (2 * np.pi)**3
     
     integrand_kp = []
     for i, kp in enumerate(kps):
